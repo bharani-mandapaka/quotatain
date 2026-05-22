@@ -1,10 +1,10 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm --filter @quotatain/database db:generate && pnpm --filter @quotatain/database build && pnpm --filter @quotatain/api build"
+buildCommand = "pnpm --filter @quotatain/database db:generate && pnpm --filter @quotatain/database build && pnpm --filter @quotatain/api build && pnpm --filter @quotatain/api deploy --prod /app/deploy"
 
 [deploy]
-startCommand = "node apps/api/dist/index.js"
+startCommand = "node /app/deploy/dist/index.js"
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3

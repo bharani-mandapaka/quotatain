@@ -12,8 +12,9 @@ cmds = [
 cmds = [
   "pnpm --filter @quotatain/database db:generate",
   "pnpm --filter @quotatain/database build",
-  "pnpm --filter @quotatain/api build"
+  "pnpm --filter @quotatain/api build",
+  "pnpm --filter @quotatain/api deploy --prod /app/deploy"
 ]
 
 [start]
-cmd = "node apps/api/dist/index.js"
+cmd = "node /app/deploy/dist/index.js"
