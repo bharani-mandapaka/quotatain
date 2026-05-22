@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Workspace & Auth ─────────────────────────────────────────────────────────
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  productProfiles ProductProfile[]
+  runs            Run[]
+  integrations    Integration[]
+
+  @@map("workspaces")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  workspaceId String
+  email       String   @unique
+  name        String?
+  passwordHash String?
+  googleId    String?  @unique
+  avatarUrl   String?
+  role        UserRole @default(AE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runs      Run[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  HEAD_OF_SALES
+  AE
+  SDR
+}
+
+// ─── Product Profiles ─────────────────────────────────────────────────────────
+
+model ProductProfile {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  rawInput    String   @db.Text
+  parsedProfile Json             // ProductProfile type from @quotatain/shared
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runs      Run[]
+
+  @@map("product_profiles")
+}
+
+// ─── Research Runs ────────────────────────────────────────────────────────────
+
+model Run {
+  id             String    @id @default(cuid())
+  workspaceId    String
+  createdById    String
+  productId      String
+  name           String?
+  depth          String    @default("standard")
+  status         RunStatus @default(QUEUED)
+  companyCount   Int       @default(0)
+  completedCount Int       @default(0)
+  failedCount    Int       @default(0)
+  createdAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  workspace  Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy  User           @relation(fields: [createdById], references: [id])
+  product    ProductProfile @relation(fields: [productId], references: [id])
+  companies  Company[]
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@map("runs")
+}
+
+enum RunStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+// ─── Companies ────────────────────────────────────────────────────────────────
+
+model Company {
+  id          String        @id @default(cuid())
+  runId       String
+  workspaceId String
+  inputName   String?
+  domain      String?
+  status      CompanyStatus @default(PENDING)
+  card        Json?         // CompanyCard type from @quotatain/shared
+  fitment     Json?         // FitmentScore type from @quotatain/shared
+  error       String?
+  createdAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([domain])
+  @@index([workspaceId])
+  @@map("companies")
+}
+
+enum CompanyStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ─── Integrations ─────────────────────────────────────────────────────────────
+
+model Integration {
+  id          String   @id @default(cuid())
+  workspaceId String
+  type        IntegrationType
+  config      Json     // encrypted credentials + metadata
+  status      String   @default("connected")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, type])
+  @@map("integrations")
+}
+
+enum IntegrationType {
+  SALESFORCE
+  HUBSPOT
+  GA4
+  GTM
+}

@@ -1,0 +1,277 @@
+import Anthropic from '@anthropic-ai/sdk'
+import { CompanyCardSchema, type CompanyCard, type ProductProfile } from '@quotatain/shared'
+import type { RawCompanyData } from '../providers/base.js'
+
+const client = new Anthropic()
+
+const SYSTEM_PROMPT = `You are a B2B sales intelligence analyst specialising in the Indian market.
+Given raw data about a company, produce a structured intelligence card for a salesperson.
+
+Rules:
+- If data is unavailable, set the field to null. NEVER fabricate or hallucinate data.
+- All monetary values should be in INR for Indian companies unless explicitly USD.
+- Attrition risk is inferred from signals (reviews, headcount trends, job posting patterns), not stated as a %.
+- Buying signals must have a source and a reason they are relevant.
+- Talking points must reference SPECIFIC evidence from the data — not generic statements.
+- fresherHiringSignal: if fresherHiringPct > 30%, infer "Scaling Fast" or "Cost Optimization" based on context.
+- competitorDisplacementAngle: only populate if they use a direct competitor tool.
+- Confidence score: 0 = no data, 100 = all key fields populated from reliable sources.`
+
+function buildUserPrompt(
+  companyName: string,
+  domain: string,
+  rawData: RawCompanyData,
+  productProfile: ProductProfile | null,
+  sourcesUsed: string[],
+  depth: string
+): string {
+  return `Company: ${companyName} (${domain})
+Research depth: ${depth}
+Sources used: ${sourcesUsed.join(', ')}
+
+RAW DATA:
+${JSON.stringify(rawData, null, 2)}
+
+${productProfile ? `PRODUCT BEING SOLD:
+${JSON.stringify({
+  name: productProfile.name,
+  capabilities: productProfile.capabilities,
+  problemsSolved: productProfile.problemsSolved,
+  targetIndustries: productProfile.targetIndustries,
+  displacedCompetitors: productProfile.displacedCompetitors,
+  primaryBuyerTitles: productProfile.primaryBuyerTitles,
+}, null, 2)}` : ''}
+
+Produce a JSON object matching this exact structure. Use null for any field you do not have data for.
+The output must be valid JSON only — no markdown, no explanation, just the JSON object.
+
+Required structure:
+${JSON.stringify(getCardStructure(), null, 2)}`
+}
+
+export async function synthesizeCompanyCard(params: {
+  companyName: string
+  domain: string
+  rawData: RawCompanyData
+  productProfile: ProductProfile | null
+  sourcesUsed: string[]
+  confidenceScore: number
+  depth: string
+}): Promise<CompanyCard> {
+  const { companyName, domain, rawData, productProfile, sourcesUsed, confidenceScore, depth } = params
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: buildUserPrompt(companyName, domain, rawData, productProfile, sourcesUsed, depth),
+        },
+      ],
+    })
+
+    const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+
+    try {
+      const json = extractJson(text)
+      const parsed = CompanyCardSchema.safeParse({
+        ...json,
+        meta: {
+          researchedAt: new Date().toISOString(),
+          researchDepth: depth,
+          sourcesUsed,
+          dataFreshness: 'fresh',
+        },
+        synthesis: {
+          ...json.synthesis,
+          confidenceScore: json.synthesis?.confidenceScore ?? confidenceScore,
+        },
+      })
+
+      if (parsed.success) return parsed.data
+
+      // On parse error, retry with the validation errors
+      if (attempt < 2) {
+        console.warn(`Card parse failed attempt ${attempt + 1}:`, parsed.error.flatten())
+        continue
+      }
+      // Final attempt: return minimal valid card
+      return buildFallbackCard(companyName, domain, rawData, sourcesUsed, confidenceScore, depth)
+    } catch {
+      if (attempt < 2) continue
+      return buildFallbackCard(companyName, domain, rawData, sourcesUsed, confidenceScore, depth)
+    }
+  }
+
+  return buildFallbackCard(companyName, domain, rawData, sourcesUsed, confidenceScore, depth)
+}
+
+function extractJson(text: string): any {
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('No JSON found in response')
+  return JSON.parse(jsonMatch[0])
+}
+
+function buildFallbackCard(
+  name: string, domain: string, raw: RawCompanyData,
+  sourcesUsed: string[], confidenceScore: number, depth: string
+): CompanyCard {
+  return CompanyCardSchema.parse({
+    identity: {
+      name: raw.name ?? name,
+      domain,
+      logoUrl: raw.logoUrl ?? null,
+      description: raw.description ?? null,
+      tagline: null,
+      industry: raw.industry ?? null,
+      subIndustry: raw.subIndustry ?? null,
+      foundedYear: raw.foundedYear ?? null,
+      hqCity: raw.hqCity ?? null,
+      hqState: raw.hqState ?? null,
+      hqCountry: raw.hqCountry ?? 'India',
+      companyType: (raw.companyType as any) ?? 'Unknown',
+      cin: raw.cin ?? null,
+      bseTicker: raw.bseTicker ?? null,
+      nseTicker: raw.nseTicker ?? null,
+    },
+    scale: {
+      headcount: raw.headcount ?? null,
+      headcount6MonthsAgo: raw.headcount6MonthsAgo ?? null,
+      headcount12MonthsAgo: raw.headcount12MonthsAgo ?? null,
+      headcountTrend: 'Unknown',
+      headcountGrowthPct6mo: null,
+      departmentBreakdown: null,
+      revenueEstimated: raw.revenueEstimated ?? null,
+      revenueCurrency: raw.revenueCurrency ?? 'INR',
+      revenueRange: raw.revenueRange ?? null,
+      revenueGrowthYoyPct: null,
+      mcaPaidUpCapital: raw.mcaPaidUpCapital ?? null,
+    },
+    funding: {
+      stage: (raw.fundingStage as any) ?? 'Unknown',
+      totalRaised: raw.totalRaised ?? null,
+      totalRaisedCurrency: 'USD',
+      lastRoundDate: raw.lastRoundDate ?? null,
+      lastRoundAmount: raw.lastRoundAmount ?? null,
+      lastRoundStage: raw.lastRoundStage ?? null,
+      lastRoundInvestors: raw.lastRoundInvestors ?? [],
+      fundingHistory: raw.fundingHistory ?? [],
+      ipoStatus: 'NA',
+      marketCapINR: raw.marketCapINR ?? null,
+      stockPriceINR: raw.stockPriceINR ?? null,
+      annualRevenueFromMCA: raw.annualRevenueFromMCA ?? null,
+      netProfitFromMCA: raw.netProfitFromMCA ?? null,
+    },
+    hiring: {
+      openRolesTotal: raw.openRolesTotal ?? null,
+      openRoles90DaysAgo: raw.openRoles90DaysAgo ?? null,
+      hiringVelocity: 'Unknown',
+      hiringSpike: false,
+      rolesByDepartment: null,
+      seniorHiresLast90Days: raw.seniorHiresLast90Days ?? [],
+      leadershipChangeFlag: raw.leadershipChange ?? false,
+      leadershipChangeDetail: raw.leadershipChangeDetail ?? null,
+      fresherHiringPct: raw.fresherHiringPct ?? null,
+      fresherHiringSignal: null,
+      avgTenureMonths: raw.avgTenureMonths ?? null,
+      attritionRisk: 'Unknown',
+      attritionEvidence: null,
+    },
+    techStack: {
+      crm: raw.crm ?? null,
+      ats: raw.ats ?? null,
+      hris: raw.hris ?? null,
+      erp: raw.erp ?? null,
+      marketing: raw.marketingTools ?? [],
+      cloud: raw.cloud ?? null,
+      collaboration: raw.collaborationTools ?? [],
+      analytics: raw.analyticsTools ?? [],
+      security: raw.securityTools ?? [],
+      other: raw.otherTools ?? [],
+      competitorFlag: null,
+      estimatedToolCount: raw.estimatedToolCount ?? null,
+    },
+    buyingSignals: [],
+    painPoints: [],
+    engagement: null,
+    intent: null,
+    synthesis: {
+      talkingPoints: ['Research data was partially available. Manual research recommended.'],
+      buyingSignalSummary: null,
+      riskFlags: [],
+      fresherHiringInterpretation: null,
+      competitorDisplacementAngle: null,
+      confidenceScore,
+    },
+    meta: {
+      researchedAt: new Date().toISOString(),
+      researchDepth: depth as any,
+      sourcesUsed,
+      dataFreshness: 'fresh',
+    },
+  })
+}
+
+function getCardStructure() {
+  return {
+    identity: {
+      name: 'string', domain: 'string', logoUrl: 'string|null',
+      description: 'string|null', tagline: 'string|null',
+      industry: 'string|null', subIndustry: 'string|null',
+      foundedYear: 'number|null', hqCity: 'string|null',
+      hqState: 'string|null', hqCountry: 'string',
+      companyType: 'Private|Public|Subsidiary|NGO|Unknown',
+      cin: 'string|null', bseTicker: 'string|null', nseTicker: 'string|null',
+    },
+    scale: {
+      headcount: 'number|null', headcount6MonthsAgo: 'number|null',
+      headcount12MonthsAgo: 'number|null',
+      headcountTrend: 'Growing|Stable|Shrinking|Unknown',
+      headcountGrowthPct6mo: 'number|null',
+      departmentBreakdown: 'object|null',
+      revenueEstimated: 'number|null', revenueCurrency: 'string',
+      revenueRange: 'string|null', revenueGrowthYoyPct: 'number|null',
+      mcaPaidUpCapital: 'number|null',
+    },
+    funding: {
+      stage: 'Seed|Series A|Series B|...|Listed|Bootstrapped|Unknown',
+      totalRaised: 'number|null', totalRaisedCurrency: 'string',
+      lastRoundDate: 'YYYY-MM-DD|null', lastRoundAmount: 'number|null',
+      lastRoundStage: 'string|null', lastRoundInvestors: 'string[]',
+      fundingHistory: '[]', ipoStatus: 'Listed|Filed|NA',
+      marketCapINR: 'string|null', stockPriceINR: 'number|null',
+      annualRevenueFromMCA: 'number|null', netProfitFromMCA: 'number|null',
+    },
+    hiring: {
+      openRolesTotal: 'number|null', openRoles90DaysAgo: 'number|null',
+      hiringVelocity: 'Growing|Stable|Shrinking|Unknown',
+      hiringSpike: 'boolean', rolesByDepartment: 'object|null',
+      seniorHiresLast90Days: 'string[]',
+      leadershipChangeFlag: 'boolean', leadershipChangeDetail: 'string|null',
+      fresherHiringPct: 'number|null',
+      fresherHiringSignal: 'Scaling Fast|Cost Optimization|Normal|Unknown|null',
+      avgTenureMonths: 'number|null',
+      attritionRisk: 'High|Medium|Low|Unknown',
+      attritionEvidence: 'string describing the evidence|null',
+    },
+    techStack: {
+      crm: 'string|null', ats: 'string|null', hris: 'string|null',
+      erp: 'string|null', marketing: 'string[]', cloud: 'string|null',
+      collaboration: 'string[]', analytics: 'string[]', security: 'string[]',
+      other: 'string[]', competitorFlag: 'string|null', estimatedToolCount: 'number|null',
+    },
+    buyingSignals: '[{ signal, detail, date: YYYY-MM-DD|null, source, weight: 0-100 }]',
+    painPoints: '[{ point, evidence, source }]',
+    synthesis: {
+      talkingPoints: '["specific evidence-based hook 1", ...]',
+      buyingSignalSummary: 'string|null',
+      riskFlags: 'string[]',
+      fresherHiringInterpretation: 'string|null',
+      competitorDisplacementAngle: 'string|null',
+      confidenceScore: 'number 0-100',
+    },
+  }
+}
