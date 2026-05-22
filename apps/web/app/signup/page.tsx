@@ -19,27 +19,30 @@ export default function SignupPage() {
     setError('')
     setLoading(true)
 
-    // Register via API
-    const res = await fetch(`${API_BASE}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name, password }),
-    })
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, password }),
+      })
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error ?? 'Something went wrong. Please try again.')
-      setLoading(false)
-      return
-    }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? 'Something went wrong. Please try again.')
+        setLoading(false)
+        return
+      }
 
-    // Sign in with the new credentials to create a session
-    const result = await signIn('credentials', { email, password, redirect: false })
-    if (result?.error) {
-      setError('Account created but sign-in failed. Please go to the login page.')
+      const result = await signIn('credentials', { email, password, redirect: false })
+      if (result?.error) {
+        setError('Account created but sign-in failed. Please go to the login page.')
+        setLoading(false)
+      } else {
+        router.push('/runs')
+      }
+    } catch {
+      setError('Could not reach the server. Please try again.')
       setLoading(false)
-    } else {
-      router.push('/runs')
     }
   }
 
