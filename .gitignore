@@ -8,6 +8,7 @@ out/
 build/
 
 # Environment — NEVER commit, only commit .env.example
+railway.env.json
 .env
 .env.local
 .env.*.local
