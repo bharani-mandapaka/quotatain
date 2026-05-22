@@ -1,4 +1,5 @@
 [build]
+builder = "nixpacks"
 buildCommand = "pnpm --filter @quotatain/database db:generate && pnpm --filter @quotatain/api build"
 
 [deploy]
