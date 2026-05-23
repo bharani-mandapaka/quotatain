@@ -57,5 +57,9 @@ const port = Number(process.env.PORT ?? 3001)
 await app.listen({ port, host: '0.0.0.0' })
 app.log.info(`API running on http://localhost:${port}`)
 
-startResearchWorker()
-app.log.info('Research worker started')
+try {
+  startResearchWorker()
+  app.log.info('Research worker started')
+} catch (err) {
+  app.log.warn({ err }, 'Research worker failed to start — REDIS_URL may not be configured')
+}
