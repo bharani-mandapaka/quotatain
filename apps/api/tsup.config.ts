@@ -5,8 +5,9 @@ export default defineConfig({
   format: ['esm'],
   outDir: 'dist',
   clean: true,
-  // Bundle pure-TS workspace packages inline (no native modules)
-  noExternal: [/@quotatain\/shared/, /@quotatain\/queue/],
-  // Keep Prisma and its wrapper external — Prisma uses CJS require() for native modules
-  external: ['@quotatain/database', '@prisma/client'],
+  // Bundle all workspace packages inline — their dist/ is wiped by Nixpacks' final COPY
+  noExternal: [/@quotatain\//],
+  // Keep @prisma/client external — it lives in node_modules/ which Nixpacks preserves,
+  // and its native query engine binary must be loaded from its installed location
+  external: ['@prisma/client'],
 })
