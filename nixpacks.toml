@@ -10,7 +10,7 @@ cmds = [
 
 [phases.build]
 cmds = [
-  "pnpm --filter @quotatain/database db:generate",
+  "pnpm --filter @quotatain/api db:generate",
   "pnpm --filter @quotatain/api build"
 ]
 
