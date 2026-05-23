@@ -20,7 +20,11 @@ Strike off tasks as work completes. MVP ships first; V2 follows.
 - [ ] Create Sentry project (free tier) → get DSN
 - [ ] Create Resend account (free tier) → for auth emails
 - [ ] Set up Supabase project (PostgreSQL, AP South Singapore region) → run `pnpm db:migrate` once `DATABASE_URL` is set
-- [ ] Set up Upstash Redis (AP South region) → set `REDIS_URL`
+- [ ] Set up Upstash Redis (AP South region) → set `REDIS_URL` in Railway
+  - `REDIS_URL` was **removed** from Railway env vars (placeholder caused connect storm)
+  - Go to upstash.com → Create Database → copy `rediss://default:PASSWORD@xxx.upstash.io:6379`
+  - Add it back as `REDIS_URL` in Railway → API service → Variables
+  - Without this the research worker is disabled (API + auth still work fine)
 - [ ] Set up Cloudflare R2 bucket (file storage)
 - [ ] Create GitHub repository + branch protection rules
 - [ ] Set up secrets management (`.env.local` for dev, Doppler/Railway env for prod)
@@ -34,7 +38,7 @@ Strike off tasks as work completes. MVP ships first; V2 follows.
 - [x] Configure monorepo structure (`apps/web`, `apps/api`, `packages/shared`, `packages/database`, `packages/queue`)
 - [x] Set up Prisma schema (workspaces, users, runs, companies, product_profiles, integrations)
 - [x] Add `googleId` + `avatarUrl` fields to User model; regenerate Prisma client
-- [ ] Run initial DB migration (`pnpm db:migrate` — needs `DATABASE_URL`)
+- [x] Run initial DB migration — auto-runs via `prisma migrate deploy` in Railway start command
 - [x] Set up BullMQ + Redis connection (`packages/queue`)
 - [ ] Configure S3/R2 client for file uploads
 - [x] Set up Pino structured logging (Fastify built-in, pino-pretty in dev)
