@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "pnpm --filter @quotatain/api db:generate && pnpm --filter @quotatain/api build"
 
 [deploy]
-startCommand = "node apps/api/dist/index.js"
+startCommand = "./apps/api/node_modules/.bin/prisma migrate deploy --schema ./packages/database/prisma/schema.prisma && node apps/api/dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
