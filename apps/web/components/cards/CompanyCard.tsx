@@ -1,5 +1,6 @@
 'use client'
 import type { CompanyCard as CardType, FitmentScore } from '@quotatain/shared'
+import { fmtINR, fmtMoney, fmtCount, normaliseRevenueString } from '@/lib/indianFormat'
 
 interface Props {
   card: CardType
@@ -139,13 +140,20 @@ export function CompanyCard({ card, fitment }: Props) {
       {/* Scale */}
       <Section title="Scale & Financials">
         <div className="grid grid-cols-2 gap-x-8">
-          <Field label="Headcount" value={scale.headcount?.toLocaleString()} />
+          <Field label="Headcount" value={fmtCount(scale.headcount)} />
           <Field label="Headcount Trend" value={scale.headcountTrend} />
           <Field label="Growth (6mo)" value={scale.headcountGrowthPct6mo != null ? `${scale.headcountGrowthPct6mo > 0 ? '+' : ''}${scale.headcountGrowthPct6mo}%` : null} />
-          <Field label="Revenue (Est.)" value={scale.revenueRange ?? (scale.revenueEstimated ? `${scale.revenueCurrency} ${scale.revenueEstimated.toLocaleString()}` : null)} />
-          <Field label="MCA Paid-Up Capital" value={scale.mcaPaidUpCapital != null ? `₹${scale.mcaPaidUpCapital.toLocaleString()}` : null} />
-          <Field label="MCA Revenue" value={funding.annualRevenueFromMCA != null ? `₹${funding.annualRevenueFromMCA.toLocaleString()}` : null} />
-          <Field label="MCA Net Profit" value={funding.netProfitFromMCA != null ? `₹${funding.netProfitFromMCA.toLocaleString()}` : null} />
+          <Field
+            label="Revenue (Est.)"
+            value={
+              normaliseRevenueString(scale.revenueRange) ??
+              fmtMoney(scale.revenueEstimated, scale.revenueCurrency)
+            }
+          />
+          <Field label="Revenue Growth (YoY)" value={scale.revenueGrowthYoyPct != null ? `${scale.revenueGrowthYoyPct > 0 ? '+' : ''}${scale.revenueGrowthYoyPct}%` : null} />
+          <Field label="MCA Paid-Up Capital" value={fmtINR(scale.mcaPaidUpCapital)} />
+          <Field label="MCA Revenue" value={fmtINR(funding.annualRevenueFromMCA)} />
+          <Field label="MCA Net Profit" value={fmtINR(funding.netProfitFromMCA)} />
         </div>
       </Section>
 
@@ -153,12 +161,13 @@ export function CompanyCard({ card, fitment }: Props) {
       <Section title="Funding">
         <div className="grid grid-cols-2 gap-x-8">
           <Field label="Stage" value={funding.stage} />
-          <Field label="Total Raised" value={funding.totalRaised != null ? `$${(funding.totalRaised / 1e6).toFixed(1)}M` : null} />
+          <Field label="IPO Status" value={funding.ipoStatus !== 'NA' ? funding.ipoStatus : null} />
+          <Field label="Total Raised" value={fmtMoney(funding.totalRaised, funding.totalRaisedCurrency)} />
           <Field label="Last Round" value={funding.lastRoundDate} />
-          <Field label="Last Amount" value={funding.lastRoundAmount != null ? `$${(funding.lastRoundAmount / 1e6).toFixed(1)}M` : null} />
+          <Field label="Last Amount" value={fmtMoney(funding.lastRoundAmount, funding.totalRaisedCurrency)} />
           <Field label="Last Stage" value={funding.lastRoundStage} />
-          <Field label="Stock Price" value={funding.stockPriceINR != null ? `₹${funding.stockPriceINR}` : null} />
-          <Field label="Market Cap" value={funding.marketCapINR} />
+          <Field label="Stock Price (NSE/BSE)" value={funding.stockPriceINR != null ? `₹${funding.stockPriceINR.toLocaleString('en-IN')}` : null} />
+          <Field label="Market Cap" value={normaliseRevenueString(funding.marketCapINR)} />
           {funding.lastRoundInvestors.length > 0 && (
             <div className="col-span-2 mt-1">
               <span className="text-xs text-gray-500">Investors: </span>

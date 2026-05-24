@@ -9,7 +9,12 @@ Given raw data about a company, produce a structured intelligence card for a sal
 
 Rules:
 - If data is unavailable, set the field to null. NEVER fabricate or hallucinate data.
-- All monetary values should be in INR for Indian companies unless explicitly USD.
+- Indian companies: all monetary values in INR. Use Indian units — crore (Cr) and lakh (L) with ₹ prefix.
+  Examples: revenueRange "₹4,800 Cr", "₹12.5 L", marketCapINR "₹2.4 Lakh Cr".
+  NEVER write "million" or "billion" for INR amounts.
+- Non-Indian companies (US-listed, etc.): use USD with standard M/B notation (e.g. "$838.8M", "$2.1B").
+- revenueRange format: "₹X Cr" for Indian companies, "$XM" for USD companies.
+- headcount: always a plain integer (no formatting). e.g. 4400, not "4,400".
 - Attrition risk is inferred from signals (reviews, headcount trends, job posting patterns), not stated as a %.
 - Buying signals must have a source and a reason they are relevant.
 - Talking points must reference SPECIFIC evidence from the data — not generic statements.

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { CheckCircle, AlertCircle, Loader2, Download, ChevronDown, ChevronUp } from 'lucide-react'
 import { api } from '@/lib/api'
 import { CompanyCard } from '@/components/cards/CompanyCard'
+import { fmtCount } from '@/lib/indianFormat'
 
 export default function RunDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -123,7 +124,7 @@ export default function RunDetailPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-gray-900 truncate">{company.card?.identity?.name ?? company.inputName}</div>
-                    <div className="text-xs text-gray-500">{company.card?.identity?.industry} · {company.card?.scale?.headcount?.toLocaleString() ?? '—'} employees · {company.card?.funding?.stage}</div>
+                    <div className="text-xs text-gray-500">{company.card?.identity?.industry} · {fmtCount(company.card?.scale?.headcount) ?? '—'} employees · {company.card?.funding?.stage}</div>
                   </div>
                   <div className="flex items-center gap-4 shrink-0">
                     {company.fitment && (
