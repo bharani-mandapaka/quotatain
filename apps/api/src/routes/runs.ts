@@ -9,72 +9,91 @@ import { sanitizeCompanyInputs } from '../modules/research/inputSanitizer.js'
 export async function runsRoutes(app: FastifyInstance) {
   // POST /api/runs — create a new research run
   app.post('/', { preHandler: requireAuth }, async (request, reply) => {
-    const body = CreateRunRequestSchema.safeParse(request.body)
-    if (!body.success) {
-      return reply.status(400).send({ error: 'Invalid request', details: body.error.flatten() })
-    }
+    try {
+      const body = CreateRunRequestSchema.safeParse(request.body)
+      if (!body.success) {
+        return reply.status(400).send({ error: 'Invalid request', details: body.error.flatten() })
+      }
 
-    const { workspaceId, userId } = request.authUser
-    const { name, productId, depth, companies } = body.data
+      const { workspaceId, userId } = request.authUser
+      const { name, productId, depth, companies } = body.data
 
-    // Verify product belongs to this workspace
-    const product = await prisma.productProfile.findFirst({
-      where: { id: productId, workspaceId },
-    })
-    if (!product) {
-      return reply.status(404).send({ error: 'Product not found' })
-    }
+      // Verify product belongs to this workspace
+      const product = await prisma.productProfile.findFirst({
+        where: { id: productId, workspaceId },
+      })
+      if (!product) {
+        return reply.status(404).send({ error: 'Product not found' })
+      }
 
-    const sanitized = sanitizeCompanyInputs(companies)
+      const sanitized = sanitizeCompanyInputs(companies)
+      if (sanitized.length === 0) {
+        return reply.status(400).send({ error: 'No valid companies after sanitisation — check domains are not private/internal.' })
+      }
 
-    const run = await prisma.run.create({
-      data: {
-        workspaceId,
-        createdById: userId,
-        productId,
-        name: name ?? null,
-        depth,
-        status: 'QUEUED',
-        companyCount: sanitized.length,
-        companies: {
-          create: sanitized.map((c) => ({
-            workspaceId,
-            inputName: c.name ?? null,
-            domain: c.domain ?? null,
-            status: 'PENDING',
-          })),
-        },
-      },
-      include: { companies: { select: { id: true, inputName: true, domain: true } } },
-    })
-
-    // Enqueue one job per company
-    const queue = getEnrichQueue()
-    await queue.addBulk(
-      run.companies.map((company) => ({
-        name: `enrich:${company.id}`,
+      const run = await prisma.run.create({
         data: {
-          companyId: company.id,
-          runId: run.id,
           workspaceId,
+          createdById: userId,
           productId,
-          inputName: company.inputName ?? undefined,
-          domain: company.domain ?? undefined,
+          name: name ?? null,
           depth,
+          status: 'QUEUED',
+          companyCount: sanitized.length,
+          companies: {
+            create: sanitized.map((c) => ({
+              workspaceId,
+              inputName: c.name ?? null,
+              domain: c.domain ?? null,
+              status: 'PENDING',
+            })),
+          },
         },
-      }))
-    )
+        include: { companies: { select: { id: true, inputName: true, domain: true } } },
+      })
 
-    const depthSeconds = { quick: 10, standard: 30, deep: 90 }
-    const estimatedSeconds = sanitized.length * (depthSeconds[depth] / 10) // parallel factor ~10
+      // Enqueue one job per company — wrapped separately so a Redis hiccup surfaces clearly
+      try {
+        const queue = getEnrichQueue()
+        await queue.addBulk(
+          run.companies.map((company) => ({
+            name: `enrich:${company.id}`,
+            data: {
+              companyId: company.id,
+              runId: run.id,
+              workspaceId,
+              productId,
+              inputName: company.inputName ?? undefined,
+              domain: company.domain ?? undefined,
+              depth,
+            },
+          }))
+        )
+      } catch (queueErr: any) {
+        app.log.error({ err: queueErr }, 'Failed to enqueue jobs — Redis/BullMQ error')
+        // Clean up the run so it doesn't sit stuck in QUEUED forever
+        await prisma.run.delete({ where: { id: run.id } }).catch(() => {})
+        return reply.status(500).send({
+          error: `Research queue unavailable: ${queueErr?.message ?? 'Redis connection failed'}. Check REDIS_URL in Railway.`,
+        })
+      }
 
-    return reply.status(202).send({
-      runId: run.id,
-      status: 'queued',
-      companyCount: sanitized.length,
-      estimatedSeconds,
-      sseChannel: `/api/runs/${run.id}/progress`,
-    })
+      const depthSeconds = { quick: 10, standard: 30, deep: 90 }
+      const estimatedSeconds = sanitized.length * (depthSeconds[depth] / 10)
+
+      return reply.status(202).send({
+        runId: run.id,
+        status: 'queued',
+        companyCount: sanitized.length,
+        estimatedSeconds,
+        sseChannel: `/api/runs/${run.id}/progress`,
+      })
+    } catch (err: any) {
+      app.log.error({ err }, 'POST /api/runs unhandled error')
+      return reply.status(500).send({
+        error: err?.message ?? 'Failed to create research run',
+      })
+    }
   })
 
   // GET /api/runs — list all runs for workspace

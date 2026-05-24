@@ -13,11 +13,19 @@ export default function ProductsPage() {
 
   const { data } = useQuery({ queryKey: ['products'], queryFn: api.products.list })
 
+  const [addAnother, setAddAnother] = useState(false)
+
   const createProduct = useMutation({
     mutationFn: () => api.products.create({ name: newName, description: newDesc }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['products'] })
-      setNewName(''); setNewDesc(''); setShowNew(false)
+      if (addAnother) {
+        setNewName('')
+        setNewDesc('')
+      } else {
+        setNewName(''); setNewDesc(''); setShowNew(false)
+      }
+      setAddAnother(false)
     },
   })
 
@@ -58,8 +66,19 @@ export default function ProductsPage() {
             />
           </div>
           <div className="flex gap-3">
-            <button onClick={() => createProduct.mutate()} disabled={!newName || !newDesc || createProduct.isPending} className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-              {createProduct.isPending ? 'Extracting profile…' : 'Create Product'}
+            <button
+              onClick={() => createProduct.mutate()}
+              disabled={!newName || !newDesc || createProduct.isPending}
+              className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {createProduct.isPending && !addAnother ? 'Extracting profile…' : 'Create Product'}
+            </button>
+            <button
+              onClick={() => { setAddAnother(true); createProduct.mutate() }}
+              disabled={!newName || !newDesc || createProduct.isPending}
+              className="bg-white border border-indigo-300 text-indigo-700 px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-50 disabled:opacity-50"
+            >
+              {createProduct.isPending && addAnother ? 'Extracting…' : 'Save & Add Another'}
             </button>
             <button onClick={() => setShowNew(false)} className="text-gray-600 px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">
               Cancel

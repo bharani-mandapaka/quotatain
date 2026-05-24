@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { Upload, FileText, AlertCircle } from 'lucide-react'
+import { Upload, FileText, AlertCircle, Check } from 'lucide-react'
 import { api } from '@/lib/api'
 
 type CompanyRow = { name?: string; domain?: string }
@@ -35,6 +35,19 @@ function parseCSV(text: string): CompanyRow[] {
   }).filter(r => r.name || r.domain)
 }
 
+function parsePasteText(text: string): CompanyRow[] {
+  if (!text.trim()) return []
+  return text.trim()
+    .split(/[\n,]+/)
+    .map(token => {
+      const v = token.trim()
+      if (!v) return null
+      if (v.includes('.')) return { domain: v.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] }
+      return { name: v }
+    })
+    .filter((r): r is CompanyRow => r !== null && !!(r.name || r.domain))
+}
+
 export default function NewRunPage() {
   const router = useRouter()
   const [companies, setCompanies] = useState<CompanyRow[]>([])
@@ -42,7 +55,7 @@ export default function NewRunPage() {
   const [mode, setMode] = useState<'upload' | 'paste'>('upload')
   const [runName, setRunName] = useState('')
   const [depth, setDepth] = useState<'quick' | 'standard' | 'deep'>('standard')
-  const [selectedProduct, setSelectedProduct] = useState('')
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([])
   const [fileName, setFileName] = useState('')
 
   const { data: productsData } = useQuery({ queryKey: ['products'], queryFn: api.products.list })
@@ -61,31 +74,55 @@ export default function NewRunPage() {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'text/csv': ['.csv'], 'application/vnd.ms-excel': ['.xls', '.xlsx'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] },
+    accept: {
+      'text/csv': ['.csv'],
+      'application/vnd.ms-excel': ['.xls', '.xlsx'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+    },
     maxFiles: 1,
   })
 
-  const parsedPaste = pasteText.trim()
-    ? pasteText.trim().split('\n').map(line => {
-        const v = line.trim()
-        if (v.includes('.')) return { domain: v.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] }
-        return { name: v }
-      }).filter(r => r.name || r.domain)
-    : []
-
+  const parsedPaste = parsePasteText(pasteText)
   const finalCompanies = mode === 'upload' ? companies : parsedPaste
 
+  const toggleProduct = (id: string) => {
+    setSelectedProducts(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    )
+  }
+
   const createRun = useMutation({
-    mutationFn: () => api.runs.create({
-      name: runName || undefined,
-      productId: selectedProduct,
-      depth,
-      companies: finalCompanies.slice(0, 50),
-    }),
-    onSuccess: (data) => router.push(`/runs/${data.runId}`),
+    mutationFn: async () => {
+      // Create one run per selected product in parallel
+      const results = await Promise.all(
+        selectedProducts.map(productId =>
+          api.runs.create({
+            name: runName || undefined,
+            productId,
+            depth,
+            companies: finalCompanies.slice(0, 50),
+          })
+        )
+      )
+      return results
+    },
+    onSuccess: (results) => {
+      if (results.length === 1) {
+        router.push(`/runs/${results[0].runId}`)
+      } else {
+        router.push('/runs')
+      }
+    },
   })
 
-  const canSubmit = finalCompanies.length > 0 && selectedProduct
+  const canSubmit = finalCompanies.length > 0 && selectedProducts.length > 0
+
+  const submitLabel = () => {
+    if (createRun.isPending) return 'Starting…'
+    const co = `${finalCompanies.length} ${finalCompanies.length === 1 ? 'company' : 'companies'}`
+    const pr = selectedProducts.length > 1 ? ` × ${selectedProducts.length} products` : ''
+    return `Research ${co}${pr}`
+  }
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
@@ -100,44 +137,72 @@ export default function NewRunPage() {
           value={runName}
           onChange={e => setRunName(e.target.value)}
           placeholder="e.g. Naukri — IT Companies Delhi NCR May 2026"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
       </div>
 
-      {/* Product selector */}
+      {/* Product selector — multi-select checkboxes */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Product to score against <span className="text-red-500">*</span></label>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Products to score against <span className="text-red-500">*</span>
+          <span className="text-xs text-gray-400 font-normal ml-1">(select one or more)</span>
+        </label>
         {productsData?.products.length === 0 ? (
           <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
             <AlertCircle size={14} />
             No products configured. <a href="/products" className="underline font-medium">Add a product first.</a>
           </div>
         ) : (
-          <select
-            value={selectedProduct}
-            onChange={e => setSelectedProduct(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">Select a product…</option>
-            {productsData?.products.map((p: any) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <div className="space-y-2">
+            {productsData?.products.map((p: any) => {
+              const selected = selectedProducts.includes(p.id)
+              return (
+                <label
+                  key={p.id}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer transition-all ${
+                    selected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() => toggleProduct(p.id)}
+                    className="sr-only"
+                  />
+                  <div className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-colors ${
+                    selected ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'
+                  }`}>
+                    {selected && <Check size={10} className="text-white" strokeWidth={3} />}
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">{p.name}</span>
+                </label>
+              )
+            })}
+          </div>
         )}
       </div>
 
       {/* Upload / Paste toggle */}
       <div className="mb-4 flex gap-2">
-        <button onClick={() => setMode('upload')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${mode === 'upload' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+        <button
+          onClick={() => setMode('upload')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${mode === 'upload' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
           Upload file
         </button>
-        <button onClick={() => setMode('paste')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${mode === 'paste' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+        <button
+          onClick={() => setMode('paste')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${mode === 'paste' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
           Paste names
         </button>
       </div>
 
       {mode === 'upload' ? (
-        <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${isDragActive ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-gray-400'}`}>
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${isDragActive ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-gray-400'}`}
+        >
           <input {...getInputProps()} />
           <Upload size={32} className="mx-auto mb-3 text-gray-400" />
           {fileName ? (
@@ -158,8 +223,8 @@ export default function NewRunPage() {
             value={pasteText}
             onChange={e => setPasteText(e.target.value)}
             rows={8}
-            placeholder={"infosys.com\nwiprodigital.com\nTata Consultancy Services\nHCL Technologies"}
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            placeholder={"One per line or comma-separated:\ninfosys.com, tcs.com\nPando AI\nFreshworks"}
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm font-mono text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
           />
           {parsedPaste.length > 0 && (
             <p className="text-xs text-gray-500 mt-1">{parsedPaste.length} companies parsed</p>
@@ -171,7 +236,11 @@ export default function NewRunPage() {
       <div className="mt-6 mb-8">
         <label className="block text-sm font-medium text-gray-700 mb-2">Research depth</label>
         <div className="grid grid-cols-3 gap-3">
-          {([['quick', 'Quick', '~10s/co', 'Large lists, fast signal'], ['standard', 'Standard', '~30s/co', 'Recommended for outreach'], ['deep', 'Deep', '~90s/co', 'Key target accounts']] as const).map(([val, label, time, desc]) => (
+          {([
+            ['quick', 'Quick', '~10s/co', 'Large lists, fast signal'],
+            ['standard', 'Standard', '~30s/co', 'Recommended for outreach'],
+            ['deep', 'Deep', '~90s/co', 'Key target accounts'],
+          ] as const).map(([val, label, time, desc]) => (
             <button
               key={val}
               onClick={() => setDepth(val)}
@@ -190,7 +259,7 @@ export default function NewRunPage() {
         disabled={!canSubmit || createRun.isPending}
         className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {createRun.isPending ? 'Starting…' : `Research ${finalCompanies.length} ${finalCompanies.length === 1 ? 'company' : 'companies'}`}
+        {submitLabel()}
       </button>
 
       {createRun.isError && (
