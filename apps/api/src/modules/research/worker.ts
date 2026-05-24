@@ -102,16 +102,14 @@ export function startResearchWorker() {
 
         await checkAndFinalizeRun(runId)
       } catch (err: any) {
+        // Mark the company FAILED on every attempt so the UI shows the right status.
+        // Do NOT increment failedCount here — BullMQ will retry this job, and the
+        // 'failed' event handler (below) only counts the run total on final failure.
         await prisma.company.update({
           where: { id: companyId },
           data: { status: 'FAILED', error: err?.message ?? 'Unknown error' },
         })
-        await prisma.run.update({
-          where: { id: runId },
-          data: { failedCount: { increment: 1 } },
-        })
-        await checkAndFinalizeRun(runId)
-        throw err // let BullMQ retry
+        throw err // let BullMQ retry (no counter increment here)
       }
     },
     {
@@ -120,8 +118,25 @@ export function startResearchWorker() {
     }
   )
 
-  worker.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} failed permanently:`, err.message)
+  // 'failed' fires on every attempt failure (including those that will be retried).
+  // Only increment the run counter on the FINAL failure so we don't double-count.
+  worker.on('failed', async (job, err) => {
+    if (!job) return
+    const maxAttempts = job.opts?.attempts ?? 1
+    const isFinalFailure = job.attemptsMade >= maxAttempts
+    if (!isFinalFailure) return // still has retries left — just log
+
+    console.error(`Job ${job.id} failed permanently (attempt ${job.attemptsMade}/${maxAttempts}):`, err.message)
+    const { runId } = job.data as CompanyEnrichJobData
+    try {
+      await prisma.run.update({
+        where: { id: runId },
+        data: { failedCount: { increment: 1 } },
+      })
+      await checkAndFinalizeRun(runId)
+    } catch (dbErr) {
+      console.error(`Failed to update run counters after permanent job failure:`, dbErr)
+    }
   })
 
   console.log(`Research worker started (concurrency: ${CONCURRENCY})`)
