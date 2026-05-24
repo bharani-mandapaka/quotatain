@@ -17,14 +17,15 @@ export default function RunDetailPage() {
     queryKey: ['run', id],
     queryFn: () => api.runs.get(id),
     refetchInterval: (query) => {
-      const status = (query.state.data as any)?.status
-      return status === 'processing' || status === 'queued' ? 3000 : false
+      const status = ((query.state.data as any)?.status ?? '').toUpperCase()
+      return status === 'PROCESSING' || status === 'QUEUED' ? 3000 : false
     },
   })
 
   // SSE for live progress during active runs
   useEffect(() => {
-    if (!run || (run.status !== 'processing' && run.status !== 'queued')) return
+    const status = (run?.status ?? '').toUpperCase()
+    if (!run || (status !== 'PROCESSING' && status !== 'QUEUED')) return
     const es = new EventSource(`${process.env.NEXT_PUBLIC_API_URL}/api/runs/${id}/progress`, { withCredentials: true })
     es.onmessage = () => qc.invalidateQueries({ queryKey: ['run', id] })
     es.onerror = () => es.close()
