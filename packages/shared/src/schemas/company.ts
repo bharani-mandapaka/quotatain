@@ -1,12 +1,22 @@
 import { z } from 'zod'
 
-export const FundingStageSchema = z.enum([
-  'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Series D',
-  'Series E+', 'Growth', 'Pre-IPO', 'Listed', 'Bootstrapped', 'Unknown'
-])
+// Helper: normalise a string to match one of the allowed enum values
+// case-insensitively. Claude sometimes returns 'listed' instead of 'Listed'.
+function caseInsensitiveEnum<T extends string>(values: readonly [T, ...T[]]) {
+  return z.preprocess((val) => {
+    if (typeof val !== 'string') return val
+    const match = values.find(v => v.toLowerCase() === val.trim().toLowerCase())
+    return match ?? val
+  }, z.enum(values))
+}
 
-export const AttritionRiskSchema = z.enum(['High', 'Medium', 'Low', 'Unknown'])
-export const HiringTrendSchema = z.enum(['Growing', 'Stable', 'Shrinking', 'Unknown'])
+export const FundingStageSchema = caseInsensitiveEnum([
+  'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Series D',
+  'Series E+', 'Growth', 'Pre-IPO', 'Listed', 'Bootstrapped', 'Unknown',
+] as const)
+
+export const AttritionRiskSchema = caseInsensitiveEnum(['High', 'Medium', 'Low', 'Unknown'] as const)
+export const HiringTrendSchema = caseInsensitiveEnum(['Growing', 'Stable', 'Shrinking', 'Unknown'] as const)
 
 export const BuyingSignalSchema = z.object({
   signal: z.string(),
@@ -67,7 +77,7 @@ export const CompanyCardSchema = z.object({
     hqCity: z.string().nullable(),
     hqState: z.string().nullable(),
     hqCountry: z.string().default('India'),
-    companyType: z.enum(['Private', 'Public', 'Subsidiary', 'NGO', 'Unknown']),
+    companyType: caseInsensitiveEnum(['Private', 'Public', 'Subsidiary', 'NGO', 'Unknown'] as const),
     cin: z.string().nullable(),       // India: Company Identification Number
     bseTicker: z.string().nullable(),
     nseTicker: z.string().nullable(),
@@ -94,7 +104,7 @@ export const CompanyCardSchema = z.object({
     lastRoundStage: z.string().nullable(),
     lastRoundInvestors: z.array(z.string()),
     fundingHistory: z.array(FundingRoundSchema),
-    ipoStatus: z.enum(['Listed', 'Filed', 'NA']).default('NA'),
+    ipoStatus: caseInsensitiveEnum(['Listed', 'Filed', 'NA'] as const).default('NA'),
     marketCapINR: z.string().nullable(),
     stockPriceINR: z.number().nullable(),
     annualRevenueFromMCA: z.number().nullable(),
@@ -110,7 +120,7 @@ export const CompanyCardSchema = z.object({
     leadershipChangeFlag: z.boolean(),
     leadershipChangeDetail: z.string().nullable(),
     fresherHiringPct: z.number().nullable(),
-    fresherHiringSignal: z.enum(['Scaling Fast', 'Cost Optimization', 'Normal', 'Unknown']).nullable(),
+    fresherHiringSignal: caseInsensitiveEnum(['Scaling Fast', 'Cost Optimization', 'Normal', 'Unknown'] as const).nullable(),
     avgTenureMonths: z.number().nullable(),
     attritionRisk: AttritionRiskSchema,
     attritionEvidence: z.string().nullable(),
