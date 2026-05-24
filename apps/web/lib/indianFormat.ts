@@ -22,9 +22,9 @@ const L  = 1_00_000      // 100 thousand
 export function fmtCrLakh(n: number): string {
   if (n >= CR) {
     const cr = n / CR
-    if (cr >= 10_000) return `${Math.round(cr / 1_000).toLocaleString('en-IN')}K Cr`
-    if (cr >= 1_000)  return `${Math.round(cr).toLocaleString('en-IN')} Cr`
-    if (cr >= 100)    return `${cr.toFixed(0)} Cr`
+    // Always show full crore value with Indian comma grouping for readability.
+    // e.g. 20,200 Cr (Infosys) is clearer than "20K Cr".
+    if (cr >= 100)  return `${Math.round(cr).toLocaleString('en-IN')} Cr`
     return `${+cr.toFixed(2)} Cr`
   }
   if (n >= L) {
