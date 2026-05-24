@@ -2,8 +2,8 @@ import { Queue, QueueEvents } from 'bullmq'
 import { getRedis } from './redis.js'
 
 export const QUEUE_NAMES = {
-  COMPANY_ENRICH: 'company:enrich',
-  RUN_COMPLETE: 'run:complete',
+  COMPANY_ENRICH: 'company-enrich',
+  RUN_COMPLETE: 'run-complete',
 } as const
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES]
