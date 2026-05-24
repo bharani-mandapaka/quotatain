@@ -65,6 +65,11 @@ export default function ProductsPage() {
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             />
           </div>
+          {createProduct.isError && (
+            <p className="text-sm text-red-600 mb-3">
+              {(createProduct.error as Error).message}
+            </p>
+          )}
           <div className="flex gap-3">
             <button
               onClick={() => createProduct.mutate()}

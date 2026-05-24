@@ -34,35 +34,40 @@ export async function productsRoutes(app: FastifyInstance) {
 
   // POST /api/products — create product profile from text
   app.post('/', { preHandler: requireAuth }, async (request, reply) => {
-    const body = CreateProductSchema.safeParse(request.body)
-    if (!body.success) return reply.status(400).send({ error: 'Invalid request', details: body.error.flatten() })
+    try {
+      const body = CreateProductSchema.safeParse(request.body)
+      if (!body.success) return reply.status(400).send({ error: 'Invalid request', details: body.error.flatten() })
 
-    const { workspaceId } = request.authUser
-    const { name, description, dimensionWeights } = body.data
+      const { workspaceId } = request.authUser
+      const { name, description, dimensionWeights } = body.data
 
-    // Use Claude to extract structured profile from description
-    const extracted = await extractProductProfile(description)
+      // Use Claude to extract structured profile from description
+      const extracted = await extractProductProfile(description)
 
-    const parsedProfile = {
-      ...extracted,
-      targetIndustries: body.data.targetIndustries ?? extracted.targetIndustries,
-      targetHeadcountMin: body.data.targetHeadcountMin ?? extracted.targetHeadcountMin,
-      targetHeadcountMax: body.data.targetHeadcountMax ?? extracted.targetHeadcountMax,
-      targetFundingStages: body.data.targetFundingStages ?? extracted.targetFundingStages,
-      dimensionWeights: dimensionWeights ?? extracted.dimensionWeights,
+      const parsedProfile = {
+        ...extracted,
+        targetIndustries: body.data.targetIndustries ?? extracted.targetIndustries,
+        targetHeadcountMin: body.data.targetHeadcountMin ?? extracted.targetHeadcountMin,
+        targetHeadcountMax: body.data.targetHeadcountMax ?? extracted.targetHeadcountMax,
+        targetFundingStages: body.data.targetFundingStages ?? extracted.targetFundingStages,
+        dimensionWeights: dimensionWeights ?? extracted.dimensionWeights,
+      }
+
+      const product = await prisma.productProfile.create({
+        data: {
+          workspaceId,
+          name,
+          rawInput: description,
+          parsedProfile: parsedProfile as any,
+          isActive: true,
+        },
+      })
+
+      return reply.status(201).send({ product, extractedProfile: parsedProfile })
+    } catch (err: any) {
+      app.log.error({ err }, 'POST /api/products error')
+      return reply.status(500).send({ error: err?.message ?? 'Failed to create product' })
     }
-
-    const product = await prisma.productProfile.create({
-      data: {
-        workspaceId,
-        name,
-        rawInput: description,
-        parsedProfile: parsedProfile as any,
-        isActive: true,
-      },
-    })
-
-    return reply.status(201).send({ product, extractedProfile: parsedProfile })
   })
 
   // PUT /api/products/:id
