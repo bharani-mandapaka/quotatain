@@ -66,3 +66,4 @@ Required for full functionality:
 - `JWT_SECRET`       — set in Railway
 - `WEB_URL`          — https://quotatain-web.vercel.app
 - `ANTHROPIC_API_KEY`— Anthropic console
+- `PERPLEXITY_API_KEY` — perplexity.ai console (powers web-search company enrichment)

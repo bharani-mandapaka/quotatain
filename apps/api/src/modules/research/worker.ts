@@ -11,6 +11,7 @@ import { BuiltWithProvider } from '../../providers/builtwith.js'
 import { ToflerProvider } from '../../providers/tofler.js'
 import { NseProvider } from '../../providers/nse.js'
 import { NewsApiProvider } from '../../providers/newsapi.js'
+import { PerplexityProvider } from '../../providers/perplexity.js'
 import type { CompanyDataProvider } from '../../providers/base.js'
 import type { ProductProfile } from '@quotatain/shared'
 
@@ -23,6 +24,7 @@ function buildProviders(): CompanyDataProvider[] {
   if (process.env.BUILTWITH_API_KEY) providers.push(new BuiltWithProvider(process.env.BUILTWITH_API_KEY))
   if (process.env.TOFLER_API_KEY) providers.push(new ToflerProvider(process.env.TOFLER_API_KEY))
   if (process.env.NEWSAPI_KEY) providers.push(new NewsApiProvider(process.env.NEWSAPI_KEY))
+  if (process.env.PERPLEXITY_API_KEY) providers.push(new PerplexityProvider(process.env.PERPLEXITY_API_KEY))
   providers.push(new NseProvider()) // no key needed
 
   return providers
