@@ -39,13 +39,13 @@ function parsePasteText(text: string): CompanyRow[] {
   if (!text.trim()) return []
   return text.trim()
     .split(/[\n,]+/)
-    .map(token => {
+    .map((token): CompanyRow | null => {
       const v = token.trim()
       if (!v) return null
       if (v.includes('.')) return { domain: v.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] }
       return { name: v }
     })
-    .filter((r): r is CompanyRow => r !== null && !!(r.name || r.domain))
+    .filter((r): r is CompanyRow => r !== null)
 }
 
 export default function NewRunPage() {
