@@ -12,10 +12,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = session?.accessToken ?? ''
     setApiToken(token)
-    // When we go from no-token → token (session just loaded), re-run any
-    // queries that fired before auth was ready (e.g. on fresh page load).
+    // When we go from no-token → token (session just loaded), reset any
+    // queries that fired before auth was ready (401 errors on fresh page load).
+    // resetQueries clears error state AND triggers an immediate re-fetch for
+    // all active observers — unlike invalidateQueries which doesn't clear errors.
     if (token && !prevToken.current) {
-      qc.invalidateQueries()
+      qc.resetQueries()
     }
     prevToken.current = token
   }, [session?.accessToken, qc])
