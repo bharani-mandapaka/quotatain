@@ -1,18 +1,33 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart2, Upload, Package, Home, Settings } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { BarChart2, Upload, Package, Home, Settings, Users } from 'lucide-react'
 
-const nav = [
+const baseNav = [
   { href: '/', label: 'Dashboard', icon: Home },
   { href: '/runs', label: 'Research Runs', icon: Upload },
   { href: '/products', label: 'Products', icon: Package },
   { href: '/dashboard', label: 'Team View', icon: BarChart2 },
+]
+
+const adminNav = [
+  { href: '/settings/users', label: 'Users', icon: Users },
+]
+
+const bottomNav = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const isAdmin = (session as any)?.role === 'ADMIN'
+
+  const nav = isAdmin
+    ? [...baseNav, ...adminNav, ...bottomNav]
+    : [...baseNav, ...bottomNav]
+
   return (
     <aside className="w-56 shrink-0 bg-white border-r border-gray-200 flex flex-col">
       <div className="h-14 flex items-center px-4 border-b border-gray-200">

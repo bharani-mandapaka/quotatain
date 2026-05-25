@@ -43,5 +43,14 @@ export const api = {
   workspace: {
     get: () => request<any>('/api/workspace'),
     dashboard: () => request<any>('/api/workspace/dashboard'),
+    users: {
+      list: () => request<{ users: any[] }>('/api/workspace/users'),
+      create: (body: { name: string; email: string; password: string; role: string }) =>
+        request<{ user: any }>('/api/workspace/users', { method: 'POST', body: JSON.stringify(body) }),
+      updateRole: (id: string, role: string) =>
+        request<{ user: any }>(`/api/workspace/users/${id}`, { method: 'PUT', body: JSON.stringify({ role }) }),
+      remove: (id: string) =>
+        request<{ ok: boolean }>(`/api/workspace/users/${id}`, { method: 'DELETE' }),
+    },
   },
 }

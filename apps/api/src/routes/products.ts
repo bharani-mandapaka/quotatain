@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@quotatain/database'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requireRole } from '../middleware/auth.js'
+
+const requireAdmin = requireRole('ADMIN')
 import { z } from 'zod'
 import { extractProductProfile } from '../modules/fitment/productIngestion.js'
 
@@ -32,8 +34,8 @@ export async function productsRoutes(app: FastifyInstance) {
     return reply.send({ products })
   })
 
-  // POST /api/products — create product profile from text
-  app.post('/', { preHandler: requireAuth }, async (request, reply) => {
+  // POST /api/products — create product profile from text (admin only)
+  app.post('/', { preHandler: requireAdmin }, async (request, reply) => {
     try {
       const body = CreateProductSchema.safeParse(request.body)
       if (!body.success) return reply.status(400).send({ error: 'Invalid request', details: body.error.flatten() })
@@ -70,8 +72,8 @@ export async function productsRoutes(app: FastifyInstance) {
     }
   })
 
-  // PUT /api/products/:id
-  app.put('/:id', { preHandler: requireAuth }, async (request, reply) => {
+  // PUT /api/products/:id (admin only)
+  app.put('/:id', { preHandler: requireAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { workspaceId } = request.authUser
     const body = CreateProductSchema.partial().safeParse(request.body)
@@ -94,8 +96,8 @@ export async function productsRoutes(app: FastifyInstance) {
     return reply.send({ product: updated })
   })
 
-  // DELETE /api/products/:id
-  app.delete('/:id', { preHandler: requireAuth }, async (request, reply) => {
+  // DELETE /api/products/:id (admin only)
+  app.delete('/:id', { preHandler: requireAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { workspaceId } = request.authUser
     await prisma.productProfile.updateMany({
