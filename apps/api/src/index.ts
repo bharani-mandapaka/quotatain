@@ -22,7 +22,22 @@ const app = Fastify({
 })
 
 await app.register(cors, {
-  origin: process.env.WEB_URL ?? 'http://localhost:3000',
+  origin: (origin, cb) => {
+    // Allow requests with no origin (server-to-server, health checks)
+    if (!origin) return cb(null, true)
+    const allowed = [
+      process.env.WEB_URL ?? 'http://localhost:3000',
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ]
+    // Allow Vercel preview deployments for this project
+    const isVercelPreview = /^https:\/\/quotatain-web[a-zA-Z0-9-]*\.vercel\.app$/.test(origin)
+    if (allowed.includes(origin) || isVercelPreview) {
+      cb(null, true)
+    } else {
+      cb(new Error(`CORS: origin ${origin} not allowed`), false)
+    }
+  },
   credentials: true,
 })
 
