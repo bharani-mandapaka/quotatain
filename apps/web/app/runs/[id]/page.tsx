@@ -25,10 +25,10 @@ function CompanyRow({ company, expanded, onToggle }: { company: any; expanded: b
   const c = company.card
   const fit = company.fitment?.compositeScore
   const topSignal = company.card?.buyingSignals?.sort((a: any, b: any) => b.weight - a.weight)[0]
-  const name = c?.identity?.name ?? company.inputName ?? company.inputDomain ?? '—'
+  const name = c?.identity?.name ?? company.inputName ?? company.domain ?? '—'
   const industry = c?.identity?.industry ?? '—'
   const headcount = c?.scale?.headcount
-  const domain = c?.identity?.domain ?? company.inputDomain ?? '—'
+  const domain = c?.identity?.domain ?? company.domain ?? '—'
 
   const dims = c && company.fitment?.breakdown ? Object.entries(company.fitment.breakdown).map(([k, v]: [string, any]) => ({
     label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).slice(0, 7),
@@ -215,7 +215,7 @@ export default function RunDetailPage() {
           {/* Company status list */}
           <div className="grid grid-cols-2 gap-2 max-h-64 overflow-auto">
             {companies.map((c: any) => {
-              const name = c.card?.identity?.name ?? c.inputName ?? c.inputDomain ?? '—'
+              const name = c.card?.identity?.name ?? c.inputName ?? c.domain ?? '—'
               const statusCls =
                 c.status === 'COMPLETED' ? 'bg-positive' :
                 c.status === 'PROCESSING' ? 'bg-accent dot-active' :
