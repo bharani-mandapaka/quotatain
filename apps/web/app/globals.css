@@ -1,21 +1,102 @@
 @import "tailwindcss";
 
+/* ── Design tokens → CSS custom properties ────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg:          #FAFAF8;
+  --surface:     #FFFFFF;
+  --surface-2:   #F4F2EE;
+  --surface-3:   #EDEAE4;
+  --hover:       #F4F2EE;
+  --line:        #ECE9E3;
+  --line-2:      #DCD8D0;
+  --line-3:      #C7C2B8;
+  --ink:         #18150F;
+  --ink-2:       #5C5751;
+  --ink-3:       #8E8881;
+  --ink-4:       #B6B0A8;
+  --accent:      #D85A28;
+  --accent-2:    #B84818;
+  --accent-soft: #FBEFE7;
+  --accent-line: #F4D8C5;
+  --positive:    #2F7D5B;
+  --positive-soft:#E5F2EB;
+  --warning:     #B07300;
+  --warning-soft:#FBF1DD;
+  --negative:    #B53A20;
+  --negative-soft:#FBE5DD;
+  --info:        #355CA8;
+  --info-soft:   #E5ECF8;
+  --sidebar-w:   240px;
+  --topbar-h:    52px;
+  --radius:      8px;
+  --radius-sm:   6px;
 }
 
+/* ── Tailwind v4 theme tokens → utility classes ───────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg:           #FAFAF8;
+  --color-surface:      #FFFFFF;
+  --color-surface-2:    #F4F2EE;
+  --color-surface-3:    #EDEAE4;
+  --color-hover:        #F4F2EE;
+  --color-line:         #ECE9E3;
+  --color-line-2:       #DCD8D0;
+  --color-line-3:       #C7C2B8;
+  --color-ink:          #18150F;
+  --color-ink-2:        #5C5751;
+  --color-ink-3:        #8E8881;
+  --color-ink-4:        #B6B0A8;
+  --color-accent:       #D85A28;
+  --color-accent-2:     #B84818;
+  --color-accent-soft:  #FBEFE7;
+  --color-accent-line:  #F4D8C5;
+  --color-positive:     #2F7D5B;
+  --color-positive-soft:#E5F2EB;
+  --color-warning:      #B07300;
+  --color-warning-soft: #FBF1DD;
+  --color-negative:     #B53A20;
+  --color-negative-soft:#FBE5DD;
+  --color-info:         #355CA8;
+  --color-info-soft:    #E5ECF8;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
 }
+
+/* ── Base reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--accent-soft); color: var(--ink); }
 
 /* Dark mode intentionally disabled — Quotatain is a light-only app */
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Status dot animation ─────────────────────────────────────── */
+@keyframes status-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(216,90,40,0.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(216,90,40,0); }
+  100% { box-shadow: 0 0 0 0 rgba(216,90,40,0); }
 }
+.dot-active { animation: status-pulse 1.4s infinite; }
+
+/* ── Signal card entrance ─────────────────────────────────────── */
+@keyframes signal-in {
+  from { transform: translateY(8px) scale(0.98); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.signal-in { animation: signal-in 0.45s cubic-bezier(0.2,0.7,0.2,1.05); }
+
+/* ── Scrollbar styling ────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--line-3); border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }

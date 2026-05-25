@@ -15,18 +15,24 @@ const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'Admin',
 }
 
-const ROLE_COLOR: Record<Role, string> = {
-  AE: 'bg-blue-50 text-blue-700',
-  SDR: 'bg-gray-100 text-gray-700',
-  HEAD_OF_SALES: 'bg-purple-50 text-purple-700',
-  ADMIN: 'bg-indigo-50 text-indigo-700',
+const ROLE_DESC: Record<Role, string> = {
+  AE: 'Runs research, views intelligence cards, exports data',
+  SDR: 'Runs research, views intelligence cards',
+  HEAD_OF_SALES: 'Full access except user management',
+  ADMIN: 'Full access including user management and settings',
 }
 
 function RoleBadge({ role }: { role: string }) {
-  const color = ROLE_COLOR[role as Role] ?? 'bg-gray-100 text-gray-600'
+  const styles: Record<string, string> = {
+    ADMIN: 'bg-accent-soft text-accent',
+    HEAD_OF_SALES: 'bg-positive-soft text-positive',
+    AE: 'bg-surface-2 text-ink-2',
+    SDR: 'border border-line-2 text-ink-3',
+  }
   const label = ROLE_LABEL[role as Role] ?? role
+  const cls = styles[role] ?? 'bg-surface-2 text-ink-3'
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${color}`}>
+    <span className={`inline-flex items-center gap-1 text-[11.5px] font-medium px-2 py-0.5 rounded-[5px] ${cls}`}>
       {role === 'ADMIN' && <ShieldCheck size={11} />}
       {label}
     </span>
@@ -62,9 +68,7 @@ export default function UsersPage() {
       setShowAdd(false)
       setFormError('')
     },
-    onError: (err: Error) => {
-      setFormError(err.message)
-    },
+    onError: (err: Error) => setFormError(err.message),
   })
 
   const changeRole = useMutation({
@@ -80,73 +84,97 @@ export default function UsersPage() {
 
   if (!isAdmin) {
     return (
-      <div className="p-8 max-w-2xl">
-        <div className="flex items-center gap-3 text-red-600 bg-red-50 rounded-xl p-5 border border-red-200">
-          <AlertCircle size={20} />
-          <p className="text-sm font-medium">Only admins can manage users.</p>
+      <div className="p-8" style={{ maxWidth: 680 }}>
+        <div className="flex items-center gap-3 text-negative bg-negative-soft rounded-[8px] px-5 py-4 border border-negative/20">
+          <AlertCircle size={16} />
+          <p className="text-[13px] font-medium">Only admins can manage users.</p>
         </div>
       </div>
     )
   }
 
+  const users: any[] = data?.users ?? []
+  const adminCount = users.filter(u => u.role === 'ADMIN').length
+  const hosCount = users.filter(u => u.role === 'HEAD_OF_SALES').length
+  const aeSDRCount = users.filter(u => u.role === 'AE' || u.role === 'SDR').length
+
   return (
-    <div className="p-8 max-w-3xl">
-      <div className="flex items-start justify-between mb-6">
+    <div className="p-8" style={{ maxWidth: 860 }}>
+      {/* Page head */}
+      <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage who has access to your workspace</p>
+          <div className="text-[10.5px] font-medium text-ink-3 uppercase tracking-[0.08em] mb-1">Settings</div>
+          <h1 className="text-[22px] font-medium tracking-tight text-ink">Members</h1>
+          <div className="text-[13px] text-ink-2 mt-1">Manage who has access to your workspace</div>
         </div>
         {!showAdd && (
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+            className="flex items-center gap-2 bg-accent text-white px-3.5 py-2 rounded-[6px] text-[13px] font-medium hover:bg-accent-2 transition-colors"
           >
-            <Plus size={15} />
-            Add User
+            <Plus size={14} />
+            Add member
           </button>
         )}
       </div>
 
-      {/* Add user form */}
+      {/* Metrics strip */}
+      {users.length > 0 && (
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {[
+            { label: 'Admins', value: adminCount },
+            { label: 'Head of Sales', value: hosCount },
+            { label: 'AEs & SDRs', value: aeSDRCount },
+            { label: 'Total seats', value: users.length },
+          ].map(m => (
+            <div key={m.label} className="bg-surface border border-line rounded-[8px] px-4 py-3">
+              <div className="font-mono text-[22px] font-medium text-ink leading-none">{m.value}</div>
+              <div className="text-[11px] font-medium text-ink-3 uppercase tracking-[0.05em] mt-1">{m.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add member form */}
       {showAdd && (
-        <div className="bg-white border border-indigo-200 rounded-xl p-6 mb-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Add New User</h3>
+        <div className="bg-surface border border-accent-line rounded-[8px] p-6 mb-6">
+          <h3 className="text-[15px] font-medium text-ink mb-4">Add member</h3>
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-medium text-ink-2">Full name</label>
               <input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="Jane Doe"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-line-2 rounded-[6px] px-3 py-2 text-[13.5px] text-ink bg-surface focus:outline-none focus:border-ink-3 focus:shadow-[0_0_0_3px_rgba(24,21,15,0.06)] transition-all"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-medium text-ink-2">Work email</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 placeholder="jane@company.com"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-line-2 rounded-[6px] px-3 py-2 text-[13.5px] text-ink bg-surface focus:outline-none focus:border-ink-3 focus:shadow-[0_0_0_3px_rgba(24,21,15,0.06)] transition-all"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Temporary password</label>
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-medium text-ink-2">Temporary password</label>
               <input
                 type="password"
                 value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 placeholder="Min. 8 characters"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-line-2 rounded-[6px] px-3 py-2 text-[13.5px] text-ink bg-surface focus:outline-none focus:border-ink-3 focus:shadow-[0_0_0_3px_rgba(24,21,15,0.06)] transition-all"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-medium text-ink-2">Role</label>
               <select
                 value={form.role}
                 onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                className="w-full border border-line-2 rounded-[6px] px-3 py-2 text-[13.5px] text-ink bg-surface focus:outline-none focus:border-ink-3 focus:shadow-[0_0_0_3px_rgba(24,21,15,0.06)] transition-all"
               >
                 {ROLES.map(r => (
                   <option key={r} value={r}>{ROLE_LABEL[r]}</option>
@@ -154,18 +182,20 @@ export default function UsersPage() {
               </select>
             </div>
           </div>
-          {formError && <p className="text-sm text-red-600 mb-3">{formError}</p>}
-          <div className="flex gap-3">
+          {formError && (
+            <p className="text-[12.5px] text-negative mb-3">{formError}</p>
+          )}
+          <div className="flex items-center gap-3">
             <button
               onClick={() => addUser.mutate()}
               disabled={!form.name || !form.email || !form.password || addUser.isPending}
-              className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              className="bg-accent text-white px-5 py-2 rounded-[6px] text-[13px] font-medium hover:bg-accent-2 disabled:opacity-40 transition-colors"
             >
-              {addUser.isPending ? 'Creating…' : 'Create User'}
+              {addUser.isPending ? 'Creating…' : 'Create member'}
             </button>
             <button
               onClick={() => { setShowAdd(false); setFormError('') }}
-              className="text-gray-600 px-5 py-2 rounded-lg text-sm font-medium hover:bg-gray-100"
+              className="text-[13px] text-ink-3 hover:text-ink px-3 py-2"
             >
               Cancel
             </button>
@@ -173,39 +203,46 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Users list */}
+      {/* Users table */}
       {isLoading ? (
         <div className="flex items-center justify-center h-40">
-          <Loader2 size={24} className="animate-spin text-gray-400" />
+          <Loader2 size={22} className="animate-spin text-ink-4" />
         </div>
       ) : error ? (
-        <div className="text-sm text-red-600 bg-red-50 p-4 rounded-xl border border-red-200">
-          Failed to load users. Please refresh.
+        <div className="text-[13px] text-negative bg-negative-soft px-5 py-4 rounded-[8px] border border-negative/20">
+          Failed to load members. Please refresh.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-surface border border-line rounded-[8px] overflow-hidden">
+          <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">User</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Role</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Joined</th>
-                <th className="px-5 py-3" />
+              <tr className="border-b border-line bg-bg">
+                {['Member', 'Role', 'Joined', ''].map(h => (
+                  <th key={h} className="text-left text-[11.5px] font-medium text-ink-3 uppercase tracking-[0.05em] px-5 py-3">
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data?.users.map((user: any) => {
+            <tbody className="divide-y divide-line">
+              {users.map((user: any) => {
                 const isSelf = user.id === currentUserId
+                const ini = initials(user.name, user.email)
                 return (
-                  <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={user.id} className="hover:bg-hover transition-colors">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0">
-                          {initials(user.name, user.email)}
+                        <div
+                          className="w-8 h-8 rounded-full text-[12px] font-medium text-white flex items-center justify-center shrink-0"
+                          style={{ background: 'linear-gradient(135deg,var(--accent),var(--accent-2))' }}
+                        >
+                          {ini}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{user.name ?? <span className="text-gray-400 italic">No name</span>}</div>
-                          <div className="text-xs text-gray-500">{user.email}</div>
+                          <div className="text-[13.5px] font-medium text-ink">
+                            {user.name ?? <span className="text-ink-4 italic">No name</span>}
+                          </div>
+                          <div className="font-mono text-[11.5px] text-ink-3">{user.email}</div>
                         </div>
                       </div>
                     </td>
@@ -217,7 +254,7 @@ export default function UsersPage() {
                           value={user.role}
                           onChange={e => changeRole.mutate({ id: user.id, role: e.target.value })}
                           disabled={changeRole.isPending}
-                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white text-gray-700 disabled:opacity-50"
+                          className="text-[12px] border border-line-2 rounded-[5px] px-2 py-1 focus:outline-none focus:border-ink-3 bg-surface text-ink-2 disabled:opacity-50"
                         >
                           {ROLES.map(r => (
                             <option key={r} value={r}>{ROLE_LABEL[r]}</option>
@@ -225,14 +262,14 @@ export default function UsersPage() {
                         </select>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-gray-500">
+                    <td className="px-5 py-3.5 font-mono text-[12px] text-ink-3">
                       {new Date(user.createdAt).toLocaleDateString('en-IN', {
                         day: 'numeric', month: 'short', year: 'numeric',
                       })}
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       {isSelf ? (
-                        <span className="text-xs text-gray-400 italic">You</span>
+                        <span className="text-[12px] text-ink-4 italic">You</span>
                       ) : (
                         <button
                           onClick={() => {
@@ -241,8 +278,8 @@ export default function UsersPage() {
                             }
                           }}
                           disabled={removeUser.isPending}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
-                          title="Remove user"
+                          className="p-1.5 text-ink-4 hover:text-negative hover:bg-negative-soft rounded-[6px] transition-colors disabled:opacity-40"
+                          title="Remove member"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -253,15 +290,25 @@ export default function UsersPage() {
               })}
             </tbody>
           </table>
-          {data?.users.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <UserCircle2 size={36} className="mb-3 opacity-40" />
-              <p className="text-sm font-medium text-gray-500">No users yet</p>
-              <p className="text-xs mt-1">Click "Add User" to create the first team member</p>
+          {users.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-ink-4">
+              <UserCircle2 size={36} className="mb-3 opacity-30" />
+              <p className="text-[14px] font-medium text-ink-3">No members yet</p>
+              <p className="text-[12.5px] text-ink-4 mt-1">Click "Add member" to invite the first teammate</p>
             </div>
           )}
         </div>
       )}
+
+      {/* Role legend */}
+      <div className="grid grid-cols-4 gap-3 mt-6">
+        {ROLES.map(r => (
+          <div key={r} className="bg-surface border border-line rounded-[8px] px-4 py-3">
+            <RoleBadge role={r} />
+            <p className="text-[11.5px] text-ink-3 mt-2 leading-snug">{ROLE_DESC[r]}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
