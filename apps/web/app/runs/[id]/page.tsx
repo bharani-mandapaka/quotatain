@@ -2,17 +2,135 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'next/navigation'
-import { CheckCircle, AlertCircle, Loader2, Download, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Download, Loader2, ChevronRight } from 'lucide-react'
 import { api } from '@/lib/api'
+import { ScorePill } from '@/components/ui/ScorePill'
+import { FitmentWheel } from '@/components/ui/FitmentWheel'
 import { CompanyCard } from '@/components/cards/CompanyCard'
 import { fmtCount } from '@/lib/indianFormat'
+
+const TABS = ['Overview', 'Fitment', 'Signals', 'People', 'Raw data'] as const
+type Tab = typeof TABS[number]
+
+function StatusDot({ status }: { status: string }) {
+  const cls =
+    status === 'COMPLETED' ? 'bg-positive' :
+    status === 'PROCESSING' ? 'bg-accent dot-active' :
+    status === 'FAILED'     ? 'bg-negative' :
+                               'bg-ink-4'
+  return <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${cls}`} />
+}
+
+function CompanyRow({ company, expanded, onToggle }: { company: any; expanded: boolean; onToggle: () => void }) {
+  const c = company.card
+  const fit = company.fitment?.compositeScore
+  const topSignal = company.card?.buyingSignals?.sort((a: any, b: any) => b.weight - a.weight)[0]
+  const name = c?.identity?.name ?? company.inputName ?? company.domain ?? '—'
+  const industry = c?.identity?.industry ?? '—'
+  const headcount = c?.scale?.headcount
+  const domain = c?.identity?.domain ?? company.domain ?? '—'
+
+  const dims = c && company.fitment?.breakdown ? Object.entries(company.fitment.breakdown).map(([k, v]: [string, any]) => ({
+    label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).slice(0, 7),
+    score: v.score,
+  })) : undefined
+
+  return (
+    <>
+      <tr
+        className="hover:bg-hover transition-colors cursor-pointer"
+        onClick={onToggle}
+      >
+        <td className="px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            <StatusDot status={company.status} />
+            <div>
+              <div className="text-[13.5px] font-medium text-ink leading-tight">{name}</div>
+              <div className="font-mono text-[11px] text-ink-4 mt-0.5">{domain}</div>
+            </div>
+          </div>
+        </td>
+        <td className="px-5 py-3.5 text-[13px] text-ink-2">{industry}</td>
+        <td className="px-5 py-3.5 font-mono text-[13px] text-ink">
+          {headcount ? fmtCount(headcount) : '—'}
+        </td>
+        <td className="px-5 py-3.5">
+          {fit != null ? <ScorePill score={Math.round(fit)} /> : <span className="text-ink-4 text-[13px]">—</span>}
+        </td>
+        <td className="px-5 py-3.5">
+          {topSignal ? (
+            <div className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${topSignal.weight >= 70 ? 'bg-positive' : topSignal.weight >= 40 ? 'bg-warning' : 'bg-ink-4'}`} />
+              <span className="text-[12.5px] text-ink-2 truncate max-w-[200px]">{topSignal.signal}</span>
+            </div>
+          ) : <span className="text-ink-4">—</span>}
+        </td>
+        <td className="px-5 py-3.5 text-ink-3">
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </td>
+      </tr>
+      {expanded && (
+        <tr>
+          <td colSpan={6} className="px-0 py-0 border-b border-line">
+            <div className="bg-surface-2/50">
+              {/* Mini intelligence card */}
+              <div className="p-6">
+                {/* Hero row */}
+                {fit != null && (
+                  <div className="flex items-start gap-6 mb-6 pb-6 border-b border-line">
+                    <div className="w-14 h-14 rounded-[10px] bg-surface-2 border border-line flex items-center justify-center font-mono text-[22px] font-medium text-ink shrink-0">
+                      {name[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-[18px] font-medium text-ink">{name}</h2>
+                      <div className="flex items-center gap-3 text-[13px] text-ink-3 mt-1">
+                        {c?.identity?.industry && <span>{c.identity.industry}</span>}
+                        {c?.identity?.hqCity && <><span>·</span><span>{c.identity.hqCity}</span></>}
+                        {c?.identity?.foundedYear && <><span>·</span><span>Founded {c.identity.foundedYear}</span></>}
+                      </div>
+                    </div>
+                    <FitmentWheel score={Math.round(fit)} dims={dims} size={140} />
+                  </div>
+                )}
+                {/* Talking points */}
+                {c?.synthesis?.talkingPoints?.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-[10.5px] font-medium text-ink-3 uppercase tracking-[0.05em] mb-2">Why reach out, now</div>
+                    <ol className="space-y-1.5">
+                      {c.synthesis.talkingPoints.slice(0, 3).map((tp: string, i: number) => (
+                        <li key={i} className="flex gap-3 text-[13px] text-ink-2">
+                          <span className="text-accent font-medium shrink-0">{i + 1}.</span>
+                          <span>{tp}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+                {/* Full card toggle */}
+                <details className="mt-4">
+                  <summary className="text-[12.5px] text-accent cursor-pointer hover:text-accent-2 font-medium list-none flex items-center gap-1">
+                    <ChevronRight size={13} className="inline" />
+                    Show full intelligence card
+                  </summary>
+                  <div className="mt-4">
+                    <CompanyCard card={c} fitment={company.fitment} />
+                  </div>
+                </details>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
 
 export default function RunDetailPage() {
   const { id } = useParams<{ id: string }>()
   const qc = useQueryClient()
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [filterAttrition, setFilterAttrition] = useState('')
   const [sortBy, setSortBy] = useState<'fitment' | 'name' | 'headcount'>('fitment')
+  const [filterAttrition, setFilterAttrition] = useState('')
 
   const { data: run, isLoading } = useQuery({
     queryKey: ['run', id],
@@ -23,7 +141,6 @@ export default function RunDetailPage() {
     },
   })
 
-  // SSE for live progress during active runs
   useEffect(() => {
     const status = (run?.status ?? '').toUpperCase()
     if (!run || (status !== 'PROCESSING' && status !== 'QUEUED')) return
@@ -33,142 +150,170 @@ export default function RunDetailPage() {
     return () => es.close()
   }, [id, run?.status, qc])
 
-  if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin text-gray-400" size={28} /></div>
-  if (!run) return <div className="p-8 text-gray-500">Run not found</div>
+  if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin text-ink-4" size={28} /></div>
+  if (!run) return <div className="p-8 text-ink-3">Run not found</div>
 
   const companies: any[] = run.companies ?? []
   const completed = companies.filter((c: any) => c.status === 'COMPLETED')
+  const processing = run.status === 'QUEUED' || run.status === 'PROCESSING'
   const pct = run.companyCount > 0 ? Math.round(((run.completedCount + run.failedCount) / run.companyCount) * 100) : 0
 
   const filtered = completed
     .filter((c: any) => !filterAttrition || c.card?.hiring?.attritionRisk === filterAttrition)
     .sort((a: any, b: any) => {
-      if (sortBy === 'fitment') return (b.fitment?.compositeScore ?? 0) - (a.fitment?.compositeScore ?? 0)
+      if (sortBy === 'fitment')   return (b.fitment?.compositeScore ?? 0) - (a.fitment?.compositeScore ?? 0)
       if (sortBy === 'headcount') return (b.card?.scale?.headcount ?? 0) - (a.card?.scale?.headcount ?? 0)
       return (a.card?.identity?.name ?? a.inputName ?? '').localeCompare(b.card?.identity?.name ?? b.inputName ?? '')
     })
+
+  const avgFit = completed.length > 0
+    ? Math.round(completed.reduce((s, c) => s + (c.fitment?.compositeScore ?? 0), 0) / completed.length)
+    : null
+  const highFit = completed.filter(c => (c.fitment?.compositeScore ?? 0) >= 75).length
+  const signals = completed.reduce((s, c) => s + (c.card?.buyingSignals?.length ?? 0), 0)
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{run.name ?? `Run ${id.slice(-6)}`}</h1>
-          <p className="text-sm text-gray-500 mt-1">{run.product?.name} · {run.companyCount} companies · {new Date(run.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <div className="text-[10.5px] font-medium text-ink-3 uppercase tracking-[0.08em] mb-1">
+            Workspace · Runs
+          </div>
+          <h1 className="text-[22px] font-medium tracking-tight text-ink">{run.name ?? `Run ${id.slice(-6)}`}</h1>
+          <div className="text-[13px] text-ink-2 mt-1">
+            {run.product?.name} · {run.companyCount} companies · {new Date(run.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
         </div>
-        {run.status === 'COMPLETED' || run.status === 'PARTIAL' ? (
+        {(run.status === 'COMPLETED' || run.status === 'PARTIAL') && (
           <a
             href={api.runs.exportUrl(id, 'csv')}
-            className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 border border-line-2 bg-surface text-ink-2 px-3.5 py-2 rounded-[6px] text-[13px] font-medium hover:bg-hover transition-colors"
           >
-            <Download size={15} />
+            <Download size={14} />
             Export CSV
           </a>
-        ) : null}
+        )}
       </div>
 
-      {/* Progress bar */}
-      {(run.status === 'QUEUED' || run.status === 'PROCESSING') && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <Loader2 size={18} className="animate-spin text-indigo-500" />
-            <span className="text-sm font-medium text-gray-700">Researching companies…</span>
-            <span className="ml-auto text-sm text-gray-500">{run.completedCount + run.failedCount} / {run.companyCount}</span>
+      {/* Processing view */}
+      {processing && (
+        <div className="bg-surface border border-line rounded-[8px] p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-2 h-2 rounded-full bg-accent dot-active" />
+            <span className="text-[13.5px] font-medium text-ink">Researching companies…</span>
+            <span className="ml-auto font-mono text-[12px] text-ink-3">
+              {run.completedCount + run.failedCount} / {run.companyCount} · {pct}%
+            </span>
           </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+          <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden mb-5">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${pct}%`, background: 'var(--accent)' }}
+            />
           </div>
-          <div className="mt-3 grid grid-cols-4 gap-3 text-xs text-center">
-            {companies.map((c: any) => (
-              <div key={c.id} className={`px-2 py-1 rounded text-xs truncate ${c.status === 'COMPLETED' ? 'bg-green-50 text-green-700' : c.status === 'FAILED' ? 'bg-red-50 text-red-700' : c.status === 'PROCESSING' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-400'}`}>
-                {c.card?.identity?.name ?? c.inputName ?? c.domain ?? 'Unknown'}
-              </div>
-            ))}
+          {/* Company status list */}
+          <div className="grid grid-cols-2 gap-2 max-h-64 overflow-auto">
+            {companies.map((c: any) => {
+              const name = c.card?.identity?.name ?? c.inputName ?? c.domain ?? '—'
+              const statusCls =
+                c.status === 'COMPLETED' ? 'bg-positive' :
+                c.status === 'PROCESSING' ? 'bg-accent dot-active' :
+                c.status === 'FAILED'     ? 'bg-negative' : 'bg-ink-4'
+              return (
+                <div key={c.id} className="flex items-center gap-2.5 px-3 py-2 bg-surface-2 rounded-[6px]">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusCls}`} />
+                  <span className="text-[12.5px] text-ink-2 truncate">{name}</span>
+                  {c.fitment?.compositeScore && c.status === 'COMPLETED' && (
+                    <ScorePill score={Math.round(c.fitment.compositeScore)} size="sm" />
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* Results */}
+      {/* Results metrics */}
       {completed.length > 0 && (
-        <>
-          {/* Filters + sort */}
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-sm text-gray-600 font-medium">{filtered.length} results</span>
-            <select value={filterAttrition} onChange={e => setFilterAttrition(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="">All attrition risks</option>
-              <option value="High">High risk</option>
-              <option value="Medium">Medium risk</option>
-              <option value="Low">Low risk</option>
-            </select>
-            <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="fitment">Sort: Fitment Score</option>
-              <option value="headcount">Sort: Headcount</option>
-              <option value="name">Sort: Name</option>
-            </select>
-          </div>
-
-          <div className="space-y-3">
-            {filtered.map((company: any) => (
-              <div key={company.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                {/* Summary row */}
-                <button
-                  onClick={() => setExpanded(expanded === company.id ? null : company.id)}
-                  className="w-full flex items-center gap-4 p-5 text-left hover:bg-gray-50 transition-colors"
-                >
-                  {company.card?.identity?.logoUrl ? (
-                    <img src={company.card.identity.logoUrl} alt="" className="w-8 h-8 rounded object-contain" />
-                  ) : (
-                    <div className="w-8 h-8 rounded bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
-                      {(company.card?.identity?.name ?? company.inputName ?? '?')[0]?.toUpperCase()}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-900 truncate">{company.card?.identity?.name ?? company.inputName}</div>
-                    <div className="text-xs text-gray-500">{company.card?.identity?.industry} · {fmtCount(company.card?.scale?.headcount) ?? '—'} employees · {company.card?.funding?.stage}</div>
-                  </div>
-                  <div className="flex items-center gap-4 shrink-0">
-                    {company.fitment && (
-                      <div className="text-center">
-                        <div className={`text-xl font-bold ${company.fitment.compositeScore >= 70 ? 'text-green-600' : company.fitment.compositeScore >= 40 ? 'text-yellow-600' : 'text-red-500'}`}>
-                          {company.fitment.compositeScore}
-                        </div>
-                        <div className="text-xs text-gray-500">Fit</div>
-                      </div>
-                    )}
-                    {company.card?.hiring?.attritionRisk && company.card.hiring.attritionRisk !== 'Unknown' && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${company.card.hiring.attritionRisk === 'High' ? 'bg-red-50 text-red-700' : company.card.hiring.attritionRisk === 'Medium' ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700'}`}>
-                        {company.card.hiring.attritionRisk} Attrition
-                      </span>
-                    )}
-                    {company.card?.buyingSignals?.length > 0 && (
-                      <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
-                        {company.card.buyingSignals.length} signal{company.card.buyingSignals.length > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {expanded === company.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                  </div>
-                </button>
-                {expanded === company.id && <CompanyCard card={company.card} fitment={company.fitment} />}
-              </div>
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {[
+            { label: 'Avg fitment',   value: avgFit ? `${avgFit}` : '—' },
+            { label: 'High-fit ≥75',  value: highFit },
+            { label: 'Signals found', value: signals },
+          ].map(m => (
+            <div key={m.label} className="bg-surface border border-line rounded-[8px] px-4 py-3">
+              <div className="font-mono text-[22px] font-medium text-ink leading-none">{m.value}</div>
+              <div className="text-[11px] font-medium text-ink-3 uppercase tracking-[0.05em] mt-1">{m.label}</div>
+            </div>
+          ))}
+        </div>
       )}
 
-      {/* Failed companies */}
-      {companies.filter((c: any) => c.status === 'FAILED').length > 0 && (
-        <div className="mt-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-2 flex items-center gap-1.5">
-            <AlertCircle size={14} className="text-red-400" />
-            {companies.filter((c: any) => c.status === 'FAILED').length} companies could not be researched
-          </h3>
-          <div className="space-y-1">
-            {companies.filter((c: any) => c.status === 'FAILED').map((c: any) => (
-              <div key={c.id} className="text-xs text-gray-500 bg-red-50 px-3 py-2 rounded-lg">
-                {c.inputName ?? c.domain ?? 'Unknown'} — {c.error ?? 'Research failed'}
-              </div>
+      {/* Filter strip */}
+      {completed.length > 0 && (
+        <div className="bg-surface border border-line rounded-t-[8px] px-5 py-3 flex items-center gap-3 border-b-0">
+          <div className="flex items-center gap-1 bg-surface-2 p-0.5 rounded-[7px]">
+            {[['', 'All'], ['Low', 'Low risk'], ['Medium', 'Medium risk'], ['High', 'High risk']].map(([val, lbl]) => (
+              <button
+                key={val}
+                onClick={() => setFilterAttrition(val)}
+                className={`px-3 py-1.5 rounded-[5px] text-[12.5px] font-medium transition-colors ${filterAttrition === val ? 'bg-surface text-ink shadow-[inset_0_0_0_1px_var(--line)]' : 'text-ink-2 hover:text-ink'}`}
+              >
+                {lbl}
+              </button>
             ))}
           </div>
+          <div className="ml-auto font-mono text-[12px] text-ink-3">{filtered.length} companies</div>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as typeof sortBy)}
+            className="border border-line-2 bg-surface rounded-[6px] px-2.5 py-1.5 text-[12.5px] text-ink-2 focus:outline-none appearance-none pr-7"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238E8881' fill='none' stroke-width='1.5'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+          >
+            <option value="fitment">Sort: Fitment</option>
+            <option value="name">Sort: Name</option>
+            <option value="headcount">Sort: Headcount</option>
+          </select>
+        </div>
+      )}
+
+      {/* Results table */}
+      {completed.length > 0 && (
+        <div className="bg-surface border border-line rounded-b-[8px] overflow-hidden">
+          <table className="w-full text-[14px]">
+            <thead>
+              <tr className="border-b border-line bg-bg">
+                {['Company', 'Industry', 'Headcount', 'Fitment', 'Top signal', ''].map(h => (
+                  <th key={h} className="text-left text-[11.5px] font-medium text-ink-3 uppercase tracking-[0.05em] px-5 py-3">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((company: any) => (
+                <CompanyRow
+                  key={company.id}
+                  company={company}
+                  expanded={expanded === company.id}
+                  onToggle={() => setExpanded(expanded === company.id ? null : company.id)}
+                />
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-ink-3">
+              <div className="text-[14px] font-medium text-ink-2 mb-1">No companies match this filter</div>
+              <button onClick={() => setFilterAttrition('')} className="text-[13px] text-accent hover:text-accent-2">Clear filters</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!processing && completed.length === 0 && run.failedCount > 0 && (
+        <div className="bg-negative-soft border border-negative-soft rounded-[8px] p-5 flex items-center gap-3">
+          <span className="text-[13.5px] text-negative font-medium">All companies failed to resolve. Check inputs and retry.</span>
         </div>
       )}
     </div>
