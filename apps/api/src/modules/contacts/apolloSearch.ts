@@ -55,6 +55,48 @@ export async function searchContacts(
   })
 }
 
+// ─── LinkedIn URL match ───────────────────────────────────────────────────────
+
+export async function matchPersonByLinkedIn(apiKey: string, linkedinUrl: string): Promise<Contact | null> {
+  try {
+    const res = await axios.post(
+      `${APOLLO_BASE}/people/match`,
+      {
+        api_key: apiKey,
+        linkedin_url: linkedinUrl,
+        reveal_personal_emails: false,
+        reveal_phone_number: false,
+      },
+      {
+        headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey },
+        timeout: 15000,
+      }
+    )
+    const p = res.data?.person
+    if (!p) return null
+    const name = p.name ?? [p.first_name, p.last_name].filter(Boolean).join(' ')
+    return {
+      apolloId: p.id,
+      name,
+      firstName: p.first_name ?? '',
+      lastName: p.last_name ?? '',
+      title: p.title ?? '',
+      seniority: p.seniority ?? null,
+      departments: p.departments ?? [],
+      linkedinUrl,
+      email: p.email && !p.email.includes('*') ? p.email : null,
+      emailStatus: p.email_status ?? null,
+      photoUrl: p.photo_url ?? null,
+      persona: 'other',
+      relevanceScore: 50,
+    }
+  } catch (err: any) {
+    if (err?.response?.status === 403) throw new Error('APOLLO_PLAN:people_match requires an Apollo API plan upgrade')
+    if (err?.response?.status === 404 || err?.response?.status === 422) return null
+    throw err
+  }
+}
+
 // ─── Email reveal ─────────────────────────────────────────────────────────────
 
 export async function revealEmail(apiKey: string, apolloId: string): Promise<string | null> {

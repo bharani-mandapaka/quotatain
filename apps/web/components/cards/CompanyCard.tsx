@@ -7,7 +7,7 @@ import { api } from '@/lib/api'
 import {
   ChevronDown, ChevronUp, Copy, Check, AlertTriangle,
   TrendingUp, Users, Zap, Target, Building2,
-  Search, Loader2, ExternalLink, Mail, UserCircle2, RefreshCw,
+  Search, Loader2, ExternalLink, Mail, UserCircle2,
 } from 'lucide-react'
 
 interface Props {
@@ -260,36 +260,67 @@ function ContactRow({
 
 function WhoToContact({
   companyId,
+  companyName,
   fitment,
   hiring,
   attritionRisk,
   attritionEvidence,
 }: {
   companyId: string
+  companyName: string
   fitment: FitmentScore
   hiring: CardType['hiring']
   attritionRisk: string
   attritionEvidence: string | null
 }) {
-  const [contacts, setContacts] = useState<Contact[] | null>(null)
-  const [cached, setCached] = useState(false)
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [urlError, setUrlError] = useState<string | null>(null)
+  const [addedOk, setAddedOk] = useState(false)
 
-  const searchMutation = useMutation({
-    mutationFn: () => api.companies.searchContacts(companyId),
+  const matchMutation = useMutation({
+    mutationFn: (url: string) => api.companies.matchLinkedIn(companyId, url),
     onSuccess: (data) => {
-      setContacts(data.contacts)
-      setCached(data.cached)
+      if (data.alreadyExists) {
+        setUrlError('This contact is already in your list')
+      } else {
+        setContacts(prev => [...prev, data.contact])
+        setLinkedinUrl('')
+        setUrlError(null)
+        setAddedOk(true)
+        setTimeout(() => setAddedOk(false), 2500)
+      }
+    },
+    onError: (err: any) => {
+      const msg = (err as Error).message ?? 'Failed to look up this LinkedIn profile'
+      const isPlan = msg.includes('plan') || msg.includes('402')
+      setUrlError(isPlan ? 'Apollo plan upgrade required to use people match. Upgrade at apollo.io.' : msg)
     },
   })
 
-  const handleEmailRevealed = (apolloId: string, email: string) => {
-    setContacts(prev =>
-      prev ? prev.map(c => c.apolloId === apolloId ? { ...c, email, emailStatus: 'verified' } : c) : prev
-    )
+  const handleReveal = (apolloId: string, email: string) => {
+    setContacts(prev => prev.map(c => c.apolloId === apolloId ? { ...c, email, emailStatus: 'verified' } : c))
   }
 
+  const handleSubmit = () => {
+    setUrlError(null)
+    setAddedOk(false)
+    if (!linkedinUrl.includes('linkedin.com/in/')) {
+      setUrlError('Please paste a LinkedIn profile URL (e.g. linkedin.com/in/firstname-lastname)')
+      return
+    }
+    matchMutation.mutate(linkedinUrl.trim())
+  }
+
+  // Per-persona LinkedIn deep search links
+  const personaLinks = [
+    { key: 'economicBuyer' as ContactPersona, label: 'Economic buyer', title: fitment.contacts.economicBuyer.recommendedTitle },
+    { key: 'champion' as ContactPersona, label: 'Champion', title: fitment.contacts.champion.recommendedTitle },
+    ...(fitment.contacts.technicalEvaluator ? [{ key: 'technicalEvaluator' as ContactPersona, label: 'Tech evaluator', title: fitment.contacts.technicalEvaluator.recommendedTitle }] : []),
+  ]
+
   // Group contacts by persona
-  const grouped = contacts
+  const grouped = contacts.length > 0
     ? (['economicBuyer', 'champion', 'technicalEvaluator', 'other'] as ContactPersona[])
         .map(p => ({ persona: p, people: contacts.filter(c => c.persona === p) }))
         .filter(g => g.people.length > 0)
@@ -338,89 +369,93 @@ function WhoToContact({
         </div>
       )}
 
-      {/* Find real contacts CTA / results */}
-      {!contacts && !searchMutation.isPending && !searchMutation.isError && (
-        <button
-          onClick={() => searchMutation.mutate()}
-          className="flex items-center gap-2 w-full justify-center py-2.5 border border-dashed border-line-2 rounded-[8px] text-[13px] text-ink-2 hover:border-accent hover:text-accent hover:bg-accent-soft transition-all"
-        >
-          <Search size={14} />
-          Find real contacts at this company via Apollo
-        </button>
-      )}
-
-      {searchMutation.isPending && (
-        <div className="flex items-center justify-center gap-2.5 py-4 text-[13px] text-ink-3">
-          <Loader2 size={16} className="animate-spin text-accent" />
-          Searching Apollo for contacts…
+      {/* LinkedIn search + URL lookup */}
+      <div className="border border-line rounded-[8px] p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Search size={13} className="text-ink-3" />
+          <span className="text-[12px] font-medium text-ink-2">Find contacts on LinkedIn</span>
         </div>
-      )}
 
-      {searchMutation.isError && (() => {
-        const msg = (searchMutation.error as Error).message
-        const isPlan = msg.includes('plan') || msg.includes('402')
-        return (
-          <div className={`flex items-start gap-3 rounded-[7px] px-4 py-3 ${isPlan ? 'bg-warning-soft' : 'bg-negative-soft'}`}>
-            <AlertTriangle size={14} className={`shrink-0 mt-0.5 ${isPlan ? 'text-warning' : 'text-negative'}`} />
-            <div className="flex-1">
-              <span className={`text-[12.5px] ${isPlan ? 'text-warning' : 'text-negative'}`}>{msg}</span>
-              {isPlan && (
-                <a href="https://apollo.io" target="_blank" rel="noopener noreferrer"
-                  className="block text-[11.5px] text-warning underline mt-0.5">
-                  Upgrade Apollo plan
-                </a>
-              )}
-            </div>
-            {!isPlan && <button onClick={() => searchMutation.mutate()} className="text-[12px] text-negative underline shrink-0">Retry</button>}
-          </div>
-        )
-      })()}
-
-      {contacts && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11.5px] text-ink-3">
-              {contacts.length} contact{contacts.length !== 1 ? 's' : ''} found
-              {cached && <span className="ml-1.5 text-ink-4">(cached)</span>}
-            </span>
-            <button
-              onClick={() => searchMutation.mutate()}
-              disabled={searchMutation.isPending}
-              className="flex items-center gap-1 text-[11.5px] text-ink-3 hover:text-ink transition-colors"
+        {/* Per-persona deep search links */}
+        <div className="flex flex-wrap gap-2">
+          {personaLinks.map(({ key, label, title }) => (
+            <a
+              key={key}
+              href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(`${title} ${companyName}`)}&origin=GLOBAL_SEARCH_HEADER`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 border border-line rounded-[6px] text-ink-2 hover:border-accent hover:text-accent hover:bg-accent-soft transition-colors"
             >
-              <RefreshCw size={11} className={searchMutation.isPending ? 'animate-spin' : ''} />
-              Refresh
+              <ExternalLink size={11} />
+              Search {label}
+            </a>
+          ))}
+        </div>
+
+        {/* URL input */}
+        <div>
+          <div className="text-[11px] text-ink-3 mb-1.5">
+            Paste a LinkedIn profile URL to look up and add a contact:
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={linkedinUrl}
+              onChange={e => { setLinkedinUrl(e.target.value); setUrlError(null); setAddedOk(false) }}
+              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
+              placeholder="https://www.linkedin.com/in/..."
+              className="flex-1 text-[12.5px] px-3 py-2 border border-line-2 rounded-[6px] bg-surface text-ink placeholder-ink-4 outline-none focus:border-accent transition-colors"
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={matchMutation.isPending || !linkedinUrl.trim()}
+              className="px-3.5 py-2 bg-accent text-white text-[12.5px] font-medium rounded-[6px] hover:bg-accent-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+            >
+              {matchMutation.isPending && <Loader2 size={13} className="animate-spin" />}
+              Add
             </button>
           </div>
-
-          {contacts.length === 0 ? (
-            <div className="text-center py-6 text-[13px] text-ink-3">
-              No matching contacts found on Apollo for this company.
-              <br />
-              <span className="text-[12px]">Try searching manually on LinkedIn with the recommended titles above.</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {grouped.map(({ persona, people }) => (
-                <div key={persona}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <PersonaTag persona={persona} />
-                    <span className="text-[11px] text-ink-4">{people.length} found</span>
-                  </div>
-                  <div className="space-y-2 mb-3">
-                    {people.map(contact => (
-                      <ContactRow
-                        key={contact.apolloId}
-                        contact={contact}
-                        companyId={companyId}
-                        onEmailRevealed={handleEmailRevealed}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+          {urlError && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-negative">
+              <AlertTriangle size={11} />
+              {urlError}
             </div>
           )}
+          {addedOk && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-positive">
+              <Check size={11} />
+              Contact added
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Contacts added this session */}
+      {contacts.length > 0 && (
+        <div className="mt-4">
+          <div className="text-[11.5px] text-ink-3 mb-3">
+            {contacts.length} contact{contacts.length !== 1 ? 's' : ''} added
+          </div>
+          <div className="space-y-2">
+            {grouped.map(({ persona, people }) => (
+              <div key={persona}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <PersonaTag persona={persona} />
+                  <span className="text-[11px] text-ink-4">{people.length}</span>
+                </div>
+                <div className="space-y-2 mb-3">
+                  {people.map(contact => (
+                    <ContactRow
+                      key={contact.apolloId}
+                      contact={contact}
+                      companyId={companyId}
+                      onEmailRevealed={handleReveal}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -632,6 +667,7 @@ export function CompanyCard({ card, fitment, companyId }: Props) {
           <SectionLabel>Who to contact</SectionLabel>
           <WhoToContact
             companyId={companyId}
+            companyName={identity.name ?? ''}
             fitment={fitment}
             hiring={hiring}
             attritionRisk={hiring.attritionRisk}

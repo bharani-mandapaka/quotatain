@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@quotatain/database'
 import { requireAuth } from '../middleware/auth.js'
-import { searchContacts, revealEmail } from '../modules/contacts/apolloSearch.js'
+import { searchContacts, revealEmail, matchPersonByLinkedIn } from '../modules/contacts/apolloSearch.js'
 
 const CONTACTS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
@@ -137,6 +137,50 @@ export async function companiesRoutes(app: FastifyInstance) {
     } catch (err: any) {
       app.log.error({ err, apolloId }, 'Apollo email reveal failed')
       return reply.status(500).send({ error: 'Email reveal failed' })
+    }
+  })
+
+  // POST /api/companies/:id/contacts/linkedin — look up a person by LinkedIn URL
+  app.post('/:id/contacts/linkedin', { preHandler: requireAuth }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { linkedinUrl } = request.body as { linkedinUrl?: string }
+    const { workspaceId } = request.authUser
+
+    if (!linkedinUrl?.includes('linkedin.com')) {
+      return reply.status(400).send({ error: 'A valid LinkedIn profile URL is required' })
+    }
+
+    const apiKey = process.env.APOLLO_API_KEY
+    if (!apiKey) return reply.status(503).send({ error: 'Apollo API key not configured' })
+
+    const company = await prisma.company.findFirst({
+      where: { id, workspaceId },
+      select: { contacts: true },
+    })
+    if (!company) return reply.status(404).send({ error: 'Company not found' })
+
+    try {
+      const contact = await matchPersonByLinkedIn(apiKey, linkedinUrl)
+      if (!contact) return reply.status(404).send({ error: 'No Apollo record found for this LinkedIn URL' })
+
+      // Merge into contacts cache (deduplicate by apolloId)
+      const existing: any[] = (company.contacts as any[]) ?? []
+      if (existing.find(c => c.apolloId === contact.apolloId)) {
+        return reply.send({ contact, alreadyExists: true })
+      }
+      const updated = [...existing, contact]
+      await prisma.company.update({
+        where: { id },
+        data: { contacts: updated as any, contactsFetchedAt: new Date() },
+      })
+
+      return reply.send({ contact, alreadyExists: false })
+    } catch (err: any) {
+      app.log.error({ err, companyId: id }, 'Apollo LinkedIn match failed')
+      if (err?.message?.startsWith('APOLLO_PLAN')) {
+        return reply.status(402).send({ error: 'People match requires an Apollo API plan upgrade' })
+      }
+      return reply.status(500).send({ error: err?.message ?? 'LinkedIn match failed' })
     }
   })
 }

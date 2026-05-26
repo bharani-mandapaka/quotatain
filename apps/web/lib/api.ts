@@ -31,6 +31,11 @@ export const api = {
         `/api/companies/${companyId}/contacts/${apolloId}/reveal`,
         { method: 'POST' }
       ),
+    matchLinkedIn: (companyId: string, linkedinUrl: string) =>
+      request<{ contact: any; alreadyExists: boolean }>(
+        `/api/companies/${companyId}/contacts/linkedin`,
+        { method: 'POST', body: JSON.stringify({ linkedinUrl }) }
+      ),
   },
   runs: {
     list: () => request<{ runs: any[] }>('/api/runs'),
