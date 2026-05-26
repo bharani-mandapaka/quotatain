@@ -7,7 +7,7 @@ import { api } from '@/lib/api'
 import {
   ChevronDown, ChevronUp, Copy, Check, AlertTriangle,
   TrendingUp, Users, Zap, Target, Building2,
-  Search, Loader2, Linkedin, Mail, UserCircle2, RefreshCw,
+  Search, Loader2, ExternalLink, Mail, UserCircle2, RefreshCw,
 } from 'lucide-react'
 
 interface Props {
@@ -241,9 +241,9 @@ function ContactRow({
             target="_blank"
             rel="noopener noreferrer"
             title="Open LinkedIn profile"
-            className="p-1.5 rounded-[5px] text-ink-3 hover:text-[#0A66C2] hover:bg-surface-2 transition-colors"
+            className="p-1.5 rounded-[5px] text-ink-3 hover:text-accent hover:bg-surface-2 transition-colors"
           >
-            <Linkedin size={14} />
+            <ExternalLink size={14} />
           </a>
         )}
         <button
