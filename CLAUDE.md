@@ -70,15 +70,38 @@ Shared UI components: `ScorePill`, `FitmentWheel` in `apps/web/components/ui/`.
 ## Company Intelligence Card (`CompanyCard.tsx`)
 
 Layout order (designed for salespeople, not analysts):
-1. **The Hook** — fit score + verdict + `synthesis.buyingSignalSummary` + `synthesis.competitorDisplacementAngle`
-2. **Leadership change alert** — banner if `hiring.leadershipChangeFlag`
-3. **Who to Contact** — Economic Buyer / Champion / Tech Evaluator persona cards with outreach angle + copy button; `hiring.seniorHiresLast90Days` strip
-4. **What to Say** — talking points + `synthesis.fresherHiringInterpretation` + risk flags
-5. **Buying Signals** — sorted by weight
+1. **The Hook** - fit score + verdict + `synthesis.buyingSignalSummary` + `synthesis.competitorDisplacementAngle`
+2. **Leadership change alert** - banner if `hiring.leadershipChangeFlag`
+3. **Who to Contact** - Economic Buyer / Champion / Tech Evaluator persona cards with outreach angle + copy button; `hiring.seniorHiresLast90Days` strip; LinkedIn search links + URL lookup
+4. **What to Say** - talking points + `synthesis.fresherHiringInterpretation` + risk flags
+5. **Buying Signals** - sorted by weight
 6. **Pain Points**
-7. **Background** — collapsible (company, scale, funding, hiring detail, tech stack)
+7. **Background** - collapsible (company, scale, funding, hiring detail, tech stack)
 8. **CRM Engagement**
-9. **Footer** — confidence %, sources, freshness, date
+9. **Footer** - confidence %, sources, freshness, date
+
+## Contact Search (Apollo + LinkedIn)
+
+The "Who to Contact" section uses a LinkedIn-first flow (Apollo free tier compatible):
+
+**How it works:**
+1. Per-persona LinkedIn deep-search links open `linkedin.com/search/results/people` pre-filtered by `{recommendedTitle} {companyName}`.
+2. User finds a person on LinkedIn, pastes their profile URL into the input.
+3. Frontend calls `POST /api/companies/:id/contacts/linkedin` with `{ linkedinUrl }`.
+4. Backend calls Apollo `/v1/people/match` with the LinkedIn URL — this endpoint works on the free Apollo plan.
+5. Contact is returned, deduped by `apolloId`, and persisted to `Company.contacts` (JSON) with a 7-day cache TTL.
+6. Email reveal calls Apollo `/v1/people/match` again with `{ id: apolloId }`.
+
+**Why not `/v1/people/search`?**  
+Apollo `/v1/people/search` (bulk search by domain + title) requires a paid plan (returns 403 on free tier). This is tracked as a future upgrade in `TASKS.md` (Option 1: Apollo plan upgrade).
+
+**Relevant files:**
+- `apps/api/src/modules/contacts/apolloSearch.ts` - `matchPersonByLinkedIn()`, `revealEmail()`, `searchContacts()`, `assignPersona()`
+- `apps/api/src/routes/companies.ts` - `POST /:id/contacts/linkedin`, `POST /:id/contacts/:apolloId/reveal`
+- `apps/web/lib/api.ts` - `api.companies.matchLinkedIn()`, `api.companies.revealEmail()`
+- `apps/web/components/cards/CompanyCard.tsx` - `WhoToContact` component
+
+**Apollo API key** - set as `APOLLO_API_KEY` in Railway. Free tier supports org enrichment and people/match by LinkedIn URL. Paid plan adds bulk people/search.
 
 ## CORS
 
