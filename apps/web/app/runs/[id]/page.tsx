@@ -72,51 +72,24 @@ function CompanyRow({ company, expanded, onToggle }: { company: any; expanded: b
       {expanded && (
         <tr>
           <td colSpan={6} className="px-0 py-0 border-b border-line">
-            <div className="bg-surface-2/50">
-              {/* Mini intelligence card */}
-              <div className="p-6">
-                {/* Hero row */}
-                {fit != null && (
-                  <div className="flex items-start gap-6 mb-6 pb-6 border-b border-line">
-                    <div className="w-14 h-14 rounded-[10px] bg-surface-2 border border-line flex items-center justify-center font-mono text-[22px] font-medium text-ink shrink-0">
-                      {name[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-[18px] font-medium text-ink">{name}</h2>
-                      <div className="flex items-center gap-3 text-[13px] text-ink-3 mt-1">
-                        {c?.identity?.industry && <span>{c.identity.industry}</span>}
-                        {c?.identity?.hqCity && <><span>·</span><span>{c.identity.hqCity}</span></>}
-                        {c?.identity?.foundedYear && <><span>·</span><span>Founded {c.identity.foundedYear}</span></>}
-                      </div>
-                    </div>
-                    <FitmentWheel score={Math.round(fit)} dims={dims} size={140} />
+            <div className="p-5 bg-surface-2/40">
+              {/* Company identity header */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-10 h-10 rounded-[8px] bg-surface border border-line flex items-center justify-center font-mono text-[18px] font-medium text-ink shrink-0">
+                  {name[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[16px] font-medium text-ink">{name}</h2>
+                  <div className="flex items-center gap-2 text-[12.5px] text-ink-3 mt-0.5">
+                    {c?.identity?.industry && <span>{c.identity.industry}</span>}
+                    {c?.identity?.hqCity && <><span>·</span><span>{c.identity.hqCity}</span></>}
+                    {c?.identity?.foundedYear && <><span>·</span><span>Est. {c.identity.foundedYear}</span></>}
                   </div>
-                )}
-                {/* Talking points */}
-                {c?.synthesis?.talkingPoints?.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-[10.5px] font-medium text-ink-3 uppercase tracking-[0.05em] mb-2">Why reach out, now</div>
-                    <ol className="space-y-1.5">
-                      {c.synthesis.talkingPoints.slice(0, 3).map((tp: string, i: number) => (
-                        <li key={i} className="flex gap-3 text-[13px] text-ink-2">
-                          <span className="text-accent font-medium shrink-0">{i + 1}.</span>
-                          <span>{tp}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-                {/* Full card toggle */}
-                <details className="mt-4">
-                  <summary className="text-[12.5px] text-accent cursor-pointer hover:text-accent-2 font-medium list-none flex items-center gap-1">
-                    <ChevronRight size={13} className="inline" />
-                    Show full intelligence card
-                  </summary>
-                  <div className="mt-4">
-                    <CompanyCard card={c} fitment={company.fitment} />
-                  </div>
-                </details>
+                </div>
+                {fit != null && <FitmentWheel score={Math.round(fit)} dims={dims} size={100} />}
               </div>
+              {/* Full intelligence card */}
+              <CompanyCard card={c} fitment={company.fitment} />
             </div>
           </td>
         </tr>
