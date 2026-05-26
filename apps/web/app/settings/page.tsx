@@ -17,7 +17,7 @@ function KVRow({ label, value, action }: { label: string; value?: React.ReactNod
   return (
     <div className="grid gap-3 py-2.5 border-b border-line last:border-0 items-center" style={{ gridTemplateColumns: '140px 1fr auto' }}>
       <div className="text-[12px] text-ink-3">{label}</div>
-      <div className="text-[13px] text-ink">{value ?? '—'}</div>
+      <div className="text-[13px] text-ink">{value ?? '-'}</div>
       <div>{action}</div>
     </div>
   )
@@ -25,10 +25,10 @@ function KVRow({ label, value, action }: { label: string; value?: React.ReactNod
 
 export default function SettingsPage() {
   const { data: session } = useSession()
-  const role = (session as any)?.role ?? '—'
-  const name = session?.user?.name ?? '—'
-  const email = session?.user?.email ?? '—'
-  const initials = name !== '—' ? name.split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase() : email[0]?.toUpperCase()
+  const role = (session as any)?.role ?? '-'
+  const name = session?.user?.name ?? '-'
+  const email = session?.user?.email ?? '-'
+  const initials = name !== '-' ? name.split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase() : email[0]?.toUpperCase()
 
   return (
     <div className="p-8" style={{ maxWidth: 680 }}>
@@ -56,7 +56,7 @@ export default function SettingsPage() {
         <KVRow label="Role" value={
           <span className="text-[12px] font-medium px-2 py-0.5 rounded bg-accent-soft text-accent">{role}</span>
         } />
-        <KVRow label="Region" value="India — MVP" />
+        <KVRow label="Region" value="India (MVP)" />
       </Section>
 
       {/* Appearance */}
@@ -113,7 +113,7 @@ export default function SettingsPage() {
 
       {/* Security */}
       <Section title="Security">
-        <KVRow label="Password" value="Last changed —" action={
+        <KVRow label="Password" value="Last changed: unknown" action={
           <button className="text-[12.5px] text-ink-2 hover:text-ink border border-line px-3 py-1.5 rounded-[6px] transition-colors">Change</button>
         } />
         <KVRow label="Active sessions" value="1 session" action={

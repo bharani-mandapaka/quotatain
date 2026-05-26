@@ -25,10 +25,10 @@ function CompanyRow({ company, expanded, onToggle }: { company: any; expanded: b
   const c = company.card
   const fit = company.fitment?.compositeScore
   const topSignal = company.card?.buyingSignals?.sort((a: any, b: any) => b.weight - a.weight)[0]
-  const name = c?.identity?.name ?? company.inputName ?? company.domain ?? '—'
-  const industry = c?.identity?.industry ?? '—'
+  const name = c?.identity?.name ?? company.inputName ?? company.domain ?? '-'
+  const industry = c?.identity?.industry ?? '-'
   const headcount = c?.scale?.headcount
-  const domain = c?.identity?.domain ?? company.domain ?? '—'
+  const domain = c?.identity?.domain ?? company.domain ?? '-'
 
   const dims = c && company.fitment?.breakdown ? Object.entries(company.fitment.breakdown).map(([k, v]: [string, any]) => ({
     label: k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).slice(0, 7),
@@ -52,10 +52,10 @@ function CompanyRow({ company, expanded, onToggle }: { company: any; expanded: b
         </td>
         <td className="px-5 py-3.5 text-[13px] text-ink-2">{industry}</td>
         <td className="px-5 py-3.5 font-mono text-[13px] text-ink">
-          {headcount ? fmtCount(headcount) : '—'}
+          {headcount ? fmtCount(headcount) : '-'}
         </td>
         <td className="px-5 py-3.5">
-          {fit != null ? <ScorePill score={Math.round(fit)} /> : <span className="text-ink-4 text-[13px]">—</span>}
+          {fit != null ? <ScorePill score={Math.round(fit)} /> : <span className="text-ink-4 text-[13px]">-</span>}
         </td>
         <td className="px-5 py-3.5">
           {topSignal ? (
@@ -63,7 +63,7 @@ function CompanyRow({ company, expanded, onToggle }: { company: any; expanded: b
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${topSignal.weight >= 70 ? 'bg-positive' : topSignal.weight >= 40 ? 'bg-warning' : 'bg-ink-4'}`} />
               <span className="text-[12.5px] text-ink-2 truncate max-w-[200px]">{topSignal.signal}</span>
             </div>
-          ) : <span className="text-ink-4">—</span>}
+          ) : <span className="text-ink-4">-</span>}
         </td>
         <td className="px-5 py-3.5 text-ink-3">
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -188,7 +188,7 @@ export default function RunDetailPage() {
           {/* Company status list */}
           <div className="grid grid-cols-2 gap-2 max-h-64 overflow-auto">
             {companies.map((c: any) => {
-              const name = c.card?.identity?.name ?? c.inputName ?? c.domain ?? '—'
+              const name = c.card?.identity?.name ?? c.inputName ?? c.domain ?? '-'
               const statusCls =
                 c.status === 'COMPLETED' ? 'bg-positive' :
                 c.status === 'PROCESSING' ? 'bg-accent dot-active' :
@@ -211,7 +211,7 @@ export default function RunDetailPage() {
       {completed.length > 0 && (
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: 'Avg fitment',   value: avgFit ? `${avgFit}` : '—' },
+            { label: 'Avg fitment',   value: avgFit ? `${avgFit}` : '-' },
             { label: 'High-fit ≥75',  value: highFit },
             { label: 'Signals found', value: signals },
           ].map(m => (

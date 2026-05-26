@@ -61,7 +61,7 @@ export default function RunsPage() {
           {[
             { label: 'Total runs', value: runs.length },
             { label: 'Completed', value: completed },
-            { label: 'Avg fitment', value: avgFit ? `${avgFit}` : '—' },
+            { label: 'Avg fitment', value: avgFit ? `${avgFit}` : '-' },
           ].map(m => (
             <div key={m.label} className="bg-surface border border-line rounded-lg px-4 py-3">
               <div className="font-mono text-[22px] font-medium text-ink leading-none">{m.value}</div>
@@ -114,7 +114,7 @@ export default function RunsPage() {
                       <div className="font-medium text-ink text-[13.5px] leading-tight">{run.name ?? `Run #${run.id.slice(-6)}`}</div>
                       <div className="font-mono text-[11px] text-ink-4 mt-0.5">{run.id.slice(-8)}</div>
                     </td>
-                    <td className="px-5 py-3.5 text-[13px] text-ink-2">{run.product?.name ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-[13px] text-ink-2">{run.product?.name ?? '-'}</td>
                     <td className="px-5 py-3.5">
                       <span className="text-[11.5px] font-medium px-2 py-0.5 rounded bg-surface-2 text-ink-2 capitalize">{run.depth ?? 'standard'}</span>
                     </td>
@@ -124,7 +124,7 @@ export default function RunsPage() {
                         : run.companyCount}
                     </td>
                     <td className="px-5 py-3.5">
-                      {run.avgFitment ? <ScorePill score={Math.round(run.avgFitment)} size="sm" /> : <span className="text-ink-4 text-[13px]">—</span>}
+                      {run.avgFitment ? <ScorePill score={Math.round(run.avgFitment)} size="sm" /> : <span className="text-ink-4 text-[13px]">-</span>}
                     </td>
                     <td className="px-5 py-3.5 font-mono text-[12px] text-ink-3">{timeAgo(run.createdAt)}</td>
                     <td className="px-5 py-3.5">

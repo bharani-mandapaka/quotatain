@@ -51,7 +51,7 @@ const INTEGRATIONS: Integration[] = [
     logo: 'TV',
     status: 'connected',
     category: 'Data',
-    detail: 'Tavily powers the live web search step in every research run — fetching recent news, funding rounds, and hiring signals.',
+    detail: 'Tavily powers the live web search step in every research run, fetching recent news, funding rounds, and hiring signals.',
   },
   {
     id: 'newsapi',

@@ -47,7 +47,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen grid" style={{ gridTemplateColumns: '1fr 1.1fr' }}>
-      {/* LEFT — form */}
+      {/* LEFT: form */}
       <div className="flex flex-col bg-bg" style={{ padding: '40px 56px' }}>
         {/* Brand */}
         <div className="flex items-center gap-2.5">
@@ -146,8 +146,8 @@ export default function SignupPage() {
                       className="w-full border border-line-2 rounded-[6px] px-3 py-2 text-[13.5px] text-ink bg-surface focus:outline-none focus:border-ink-3 transition-all appearance-none"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238E8881' fill='none' stroke-width='1.5'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 11px center', paddingRight: 30 }}
                     >
-                      <option value="india">India — MVP region</option>
-                      <option value="us" disabled>United States — V2</option>
+                      <option value="india">India (MVP region)</option>
+                      <option value="us" disabled>United States (V2)</option>
                     </select>
                   </div>
                   {error && <p className="text-[13px] text-negative">{error}</p>}
@@ -200,7 +200,7 @@ export default function SignupPage() {
             <span style={{ color: 'var(--accent)' }}>One sales-ready brief per account.</span>
           </h1>
           <p className="mt-4 leading-relaxed max-w-[430px]" style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>
-            Drop a list. The agent queries Apollo, MCA21, NSE, AmbitionBox, news, and your CRM in parallel — then synthesises a fitment-scored intelligence card per company.
+            Drop a list. The agent queries Apollo, MCA21, NSE, AmbitionBox, news, and your CRM in parallel, then synthesises a fitment-scored intelligence card per company.
           </p>
         </div>
         <div className="relative">

@@ -608,7 +608,7 @@ export function CompanyCard({ card, fitment, companyId }: Props) {
         <div className="mx-5 mt-4 flex items-start gap-2.5 bg-warning-soft border border-warning-soft rounded-[7px] px-4 py-3">
           <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
           <div>
-            <span className="text-[12px] font-medium text-warning">Leadership change — act fast</span>
+            <span className="text-[12px] font-medium text-warning">Leadership change: act fast</span>
             <p className="text-[12px] text-warning/80 mt-0.5">{hiring.leadershipChangeDetail}</p>
           </div>
         </div>
@@ -695,7 +695,7 @@ export function CompanyCard({ card, fitment, companyId }: Props) {
                 <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0 mt-1.5" />
                 <div>
                   <span className="text-[13px] font-medium text-ink">{p.point}</span>
-                  <span className="text-[12px] text-ink-3 ml-2">— {p.evidence}</span>
+                  <span className="text-[12px] text-ink-3 ml-2">{p.evidence}</span>
                 </div>
               </div>
             ))}

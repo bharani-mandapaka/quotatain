@@ -7,7 +7,7 @@
  *
  * Rules used across the app:
  *   - INR amounts: ₹ prefix + crore (Cr) / lakh (L) notation
- *   - USD amounts: keep Western $M / $B — Indian business press still
+ *   - USD amounts: keep Western $M / $B - Indian business press still
  *     quotes USD in millions even internally
  *   - Plain counts (headcount, roles): Indian-locale commas (3,00,000)
  */
@@ -52,7 +52,7 @@ export function fmtMoney(
   if (n == null) return null
   const cur = currency.toUpperCase()
   if (cur === 'INR') return fmtINR(n)
-  // USD — use standard M/B since mixing "crore" with "$" confuses readers
+  // USD - use standard M/B since mixing "crore" with "$" confuses readers
   if (n >= 1e9) return `$${+(n / 1e9).toFixed(2)}B`
   if (n >= 1e6) return `$${+(n / 1e6).toFixed(1)}M`
   if (n >= 1e3) return `$${+(n / 1e3).toFixed(0)}K`
@@ -74,7 +74,7 @@ export function normaliseRevenueString(raw: string | null | undefined): string |
   if (!raw) return null
   const s = raw.trim()
 
-  // Already has ₹ — assume INR, re-parse the numeric part
+  // Already has ₹ - assume INR, re-parse the numeric part
   const inrMatch = s.match(/^₹\s*([\d.,]+)\s*(Cr|crore|L|lakh|K|M|B)?$/i)
   if (inrMatch) {
     const n = parseFloat(inrMatch[1].replace(/,/g, ''))
@@ -101,5 +101,5 @@ export function normaliseRevenueString(raw: string | null | undefined): string |
     return fmtMoney(val, 'USD')
   }
 
-  return s   // unrecognised format — show as-is
+  return s   // unrecognised format - show as-is
 }

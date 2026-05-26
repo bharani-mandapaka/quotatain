@@ -108,7 +108,7 @@ export default function NewRunPage() {
           <input
             value={runName}
             onChange={e => setRunName(e.target.value)}
-            placeholder="e.g. Naukri RMS — IT companies Delhi Q2 2026"
+            placeholder="e.g. Naukri RMS - IT companies Delhi Q2 2026"
             className="w-full border border-line-2 rounded-[6px] px-3 py-2 text-[13.5px] text-ink bg-surface focus:outline-none focus:border-ink-3 focus:shadow-[0_0_0_3px_rgba(24,21,15,0.06)] transition-all"
           />
         </div>
@@ -204,7 +204,7 @@ export default function NewRunPage() {
               {fileName ? (
                 <div className="flex items-center justify-center gap-2 text-[13px] font-medium text-accent">
                   <FileText size={14} />
-                  {fileName} — {companies.length} companies
+                  {fileName} · {companies.length} companies
                 </div>
               ) : (
                 <>

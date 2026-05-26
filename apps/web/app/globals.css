@@ -79,7 +79,7 @@ input, textarea, select { font-family: inherit; color: inherit; }
 a { color: inherit; text-decoration: none; }
 ::selection { background: var(--accent-soft); color: var(--ink); }
 
-/* Dark mode intentionally disabled — Quotatain is a light-only app */
+/* Dark mode intentionally disabled - Quotatain is a light-only app */
 
 /* ── Status dot animation ─────────────────────────────────────── */
 @keyframes status-pulse {

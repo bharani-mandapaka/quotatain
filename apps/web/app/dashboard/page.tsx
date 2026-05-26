@@ -139,12 +139,12 @@ export default function DashboardPage() {
                           <div className="text-[13px] font-medium text-ink leading-tight">{run.name ?? `Run #${run.id.slice(-6)}`}</div>
                           <div className="font-mono text-[11px] text-ink-4 mt-0.5">{timeAgo(run.createdAt)}</div>
                         </td>
-                        <td className="px-4 py-3 text-[12.5px] text-ink-2">{run.product?.name ?? '—'}</td>
+                        <td className="px-4 py-3 text-[12.5px] text-ink-2">{run.product?.name ?? '-'}</td>
                         <td className="px-4 py-3 font-mono text-[12.5px] text-ink">{run.companyCount ?? 0}</td>
                         <td className="px-4 py-3">
                           {run.avgFitment
                             ? <ScorePill score={Math.round(run.avgFitment)} size="sm" />
-                            : <span className="text-ink-4 text-[12.5px]">—</span>}
+                            : <span className="text-ink-4 text-[12.5px]">-</span>}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-[11.5px] font-medium px-2 py-0.5 rounded capitalize ${badge}`}>

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Quotatain — Sales Intelligence',
+  title: 'Quotatain | Sales Intelligence',
   description: 'Research companies, score product fit, and find the right contacts.',
 }
 

@@ -26,7 +26,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen grid" style={{ gridTemplateColumns: '1fr 1.1fr' }}>
-      {/* LEFT — form */}
+      {/* LEFT: form */}
       <div className="flex flex-col bg-bg" style={{ padding: '40px 56px' }}>
         {/* Brand */}
         <div className="flex items-center gap-2.5">
@@ -120,7 +120,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* RIGHT — value-prop slab */}
+      {/* RIGHT: value-prop slab */}
       <div
         className="relative flex flex-col justify-between overflow-hidden"
         style={{ background: 'var(--ink)', color: '#FAFAF8', padding: '44px 52px' }}
@@ -154,7 +154,7 @@ export default function LoginPage() {
           </h1>
           <p className="mt-4 leading-relaxed max-w-[430px]" style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>
             Drop a list. The agent queries Apollo, MCA21, NSE, AmbitionBox, news, and your CRM
-            in parallel — then synthesises a fitment-scored intelligence card per company.
+            in parallel, then synthesises a fitment-scored intelligence card per company.
           </p>
         </div>
 
