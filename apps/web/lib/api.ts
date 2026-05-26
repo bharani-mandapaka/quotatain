@@ -23,6 +23,15 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  companies: {
+    searchContacts: (id: string) =>
+      request<{ contacts: any[]; cached: boolean }>(`/api/companies/${id}/contacts`, { method: 'POST' }),
+    revealEmail: (companyId: string, apolloId: string) =>
+      request<{ email: string | null; alreadyRevealed: boolean }>(
+        `/api/companies/${companyId}/contacts/${apolloId}/reveal`,
+        { method: 'POST' }
+      ),
+  },
   runs: {
     list: () => request<{ runs: any[] }>('/api/runs'),
     get: (id: string) => request<any>(`/api/runs/${id}`),

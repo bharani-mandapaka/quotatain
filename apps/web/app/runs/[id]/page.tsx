@@ -89,7 +89,7 @@ function CompanyRow({ company, expanded, onToggle }: { company: any; expanded: b
                 {fit != null && <FitmentWheel score={Math.round(fit)} dims={dims} size={100} />}
               </div>
               {/* Full intelligence card */}
-              <CompanyCard card={c} fitment={company.fitment} />
+              <CompanyCard card={c} fitment={company.fitment} companyId={company.id} />
             </div>
           </td>
         </tr>

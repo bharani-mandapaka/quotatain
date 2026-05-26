@@ -112,6 +112,8 @@ model Company {
   status      CompanyStatus @default(PENDING)
   card        Json?         // CompanyCard type from @quotatain/shared
   fitment     Json?         // FitmentScore type from @quotatain/shared
+  contacts    Json?         // Contact[] from Apollo people search (cached)
+  contactsFetchedAt DateTime? // when contacts were last fetched
   error       String?
   createdAt   DateTime      @default(now())
   completedAt DateTime?

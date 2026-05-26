@@ -1,15 +1,19 @@
 'use client'
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import type { CompanyCard as CardType, FitmentScore } from '@quotatain/shared'
 import { fmtINR, fmtMoney, fmtCount, normaliseRevenueString } from '@/lib/indianFormat'
+import { api } from '@/lib/api'
 import {
   ChevronDown, ChevronUp, Copy, Check, AlertTriangle,
   TrendingUp, Users, Zap, Target, Building2,
+  Search, Loader2, Linkedin, Mail, UserCircle2, RefreshCw,
 } from 'lucide-react'
 
 interface Props {
   card: CardType
   fitment: FitmentScore | null
+  companyId: string   // DB id — needed for contact search API calls
 }
 
 // ─── tiny helpers ────────────────────────────────────────────────────────────
@@ -112,6 +116,301 @@ function ContactCard({
         <p className="text-[12px] text-accent leading-relaxed flex-1 italic">"{rec.outreachAngle}"</p>
         <CopyButton text={rec.outreachAngle} />
       </div>
+    </div>
+  )
+}
+
+// ─── Contact search ───────────────────────────────────────────────────────────
+
+type ContactPersona = 'economicBuyer' | 'champion' | 'technicalEvaluator' | 'other'
+
+interface Contact {
+  apolloId: string
+  name: string
+  title: string
+  seniority: string | null
+  linkedinUrl: string | null
+  email: string | null
+  emailStatus: string | null
+  photoUrl: string | null
+  persona: ContactPersona
+  relevanceScore: number
+}
+
+const PERSONA_LABEL: Record<ContactPersona, string> = {
+  economicBuyer: 'Economic buyer',
+  champion: 'Champion',
+  technicalEvaluator: 'Tech evaluator',
+  other: 'Other',
+}
+
+function PersonaTag({ persona }: { persona: ContactPersona }) {
+  const cls =
+    persona === 'economicBuyer'      ? 'bg-accent-soft text-accent' :
+    persona === 'champion'           ? 'bg-positive-soft text-positive' :
+    persona === 'technicalEvaluator' ? 'bg-warning-soft text-warning' :
+                                       'bg-surface-2 text-ink-3'
+  return (
+    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cls}`}>
+      {PERSONA_LABEL[persona]}
+    </span>
+  )
+}
+
+function ContactRow({
+  contact,
+  companyId,
+  onEmailRevealed,
+}: {
+  contact: Contact
+  companyId: string
+  onEmailRevealed: (apolloId: string, email: string) => void
+}) {
+  const [copied, setCopied] = useState<'name' | 'email' | null>(null)
+
+  const revealMutation = useMutation({
+    mutationFn: () => api.companies.revealEmail(companyId, contact.apolloId),
+    onSuccess: (data) => {
+      if (data.email) onEmailRevealed(contact.apolloId, data.email)
+    },
+  })
+
+  const copyText = (text: string, which: 'name' | 'email') => {
+    navigator.clipboard.writeText(text)
+    setCopied(which)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  const initials = contact.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+
+  return (
+    <div className="flex items-start gap-3 p-3 bg-surface border border-line rounded-[8px]">
+      {/* Avatar */}
+      {contact.photoUrl ? (
+        <img src={contact.photoUrl} alt={contact.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
+      ) : (
+        <div className="w-10 h-10 rounded-full bg-surface-2 border border-line flex items-center justify-center shrink-0 font-medium text-[13px] text-ink-2">
+          {initials || <UserCircle2 size={20} className="text-ink-4" />}
+        </div>
+      )}
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[13.5px] font-medium text-ink">{contact.name}</span>
+          <PersonaTag persona={contact.persona} />
+        </div>
+        <div className="text-[12px] text-ink-2 mt-0.5">{contact.title}</div>
+
+        {/* Email row */}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          {contact.email ? (
+            <div className="flex items-center gap-1.5 bg-surface-2 rounded-[5px] px-2.5 py-1">
+              <Mail size={11} className="text-positive shrink-0" />
+              <span className="text-[11.5px] font-mono text-ink">{contact.email}</span>
+              <button
+                onClick={() => copyText(contact.email!, 'email')}
+                className="ml-1 text-ink-3 hover:text-ink transition-colors"
+              >
+                {copied === 'email' ? <Check size={11} className="text-positive" /> : <Copy size={11} />}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => revealMutation.mutate()}
+              disabled={revealMutation.isPending || revealMutation.isError}
+              className="flex items-center gap-1.5 text-[11.5px] text-accent hover:text-accent-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {revealMutation.isPending ? (
+                <><Loader2 size={11} className="animate-spin" />Revealing…</>
+              ) : revealMutation.isError ? (
+                <span className="text-negative">Failed to reveal</span>
+              ) : (
+                <><Mail size={11} />Reveal email</>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1 shrink-0">
+        {contact.linkedinUrl && (
+          <a
+            href={contact.linkedinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open LinkedIn profile"
+            className="p-1.5 rounded-[5px] text-ink-3 hover:text-[#0A66C2] hover:bg-surface-2 transition-colors"
+          >
+            <Linkedin size={14} />
+          </a>
+        )}
+        <button
+          onClick={() => copyText(contact.name, 'name')}
+          title="Copy name"
+          className="p-1.5 rounded-[5px] text-ink-3 hover:text-ink hover:bg-surface-2 transition-colors"
+        >
+          {copied === 'name' ? <Check size={13} className="text-positive" /> : <Copy size={13} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function WhoToContact({
+  companyId,
+  fitment,
+  hiring,
+  attritionRisk,
+  attritionEvidence,
+}: {
+  companyId: string
+  fitment: FitmentScore
+  hiring: CardType['hiring']
+  attritionRisk: string
+  attritionEvidence: string | null
+}) {
+  const [contacts, setContacts] = useState<Contact[] | null>(null)
+  const [cached, setCached] = useState(false)
+
+  const searchMutation = useMutation({
+    mutationFn: () => api.companies.searchContacts(companyId),
+    onSuccess: (data) => {
+      setContacts(data.contacts)
+      setCached(data.cached)
+    },
+  })
+
+  const handleEmailRevealed = (apolloId: string, email: string) => {
+    setContacts(prev =>
+      prev ? prev.map(c => c.apolloId === apolloId ? { ...c, email, emailStatus: 'verified' } : c) : prev
+    )
+  }
+
+  // Group contacts by persona
+  const grouped = contacts
+    ? (['economicBuyer', 'champion', 'technicalEvaluator', 'other'] as ContactPersona[])
+        .map(p => ({ persona: p, people: contacts.filter(c => c.persona === p) }))
+        .filter(g => g.people.length > 0)
+    : []
+
+  return (
+    <div>
+      {/* Recommended personas (always shown) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 mb-4">
+        <ContactCard role="Economic buyer" rec={fitment.contacts.economicBuyer} />
+        <ContactCard role="Champion" rec={fitment.contacts.champion} />
+        {fitment.contacts.technicalEvaluator && (
+          <ContactCard role="Tech evaluator" rec={fitment.contacts.technicalEvaluator} />
+        )}
+      </div>
+
+      {/* Senior hires */}
+      {hiring.seniorHiresLast90Days.length > 0 && (
+        <div className="mb-4 bg-surface-2 rounded-[7px] px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Users size={13} className="text-ink-3" />
+            <span className="text-[11.5px] font-medium text-ink-2">New senior hires to target (last 90 days)</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {hiring.seniorHiresLast90Days.map((hire, i) => (
+              <span key={i} className="text-[12px] text-ink bg-surface border border-line px-2.5 py-1 rounded-[5px]">
+                {hire}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Attrition risk */}
+      {attritionRisk && attritionRisk !== 'Unknown' && (
+        <div className="mb-4 flex items-start gap-2.5">
+          <span className="text-[11.5px] text-ink-3 shrink-0 mt-0.5">Attrition risk:</span>
+          <span className={`text-[11.5px] font-medium px-2 py-0.5 rounded-full ${
+            attritionRisk === 'High'   ? 'bg-negative-soft text-negative' :
+            attritionRisk === 'Medium' ? 'bg-warning-soft text-warning' :
+                                         'bg-positive-soft text-positive'
+          }`}>{attritionRisk}</span>
+          {attritionEvidence && (
+            <span className="text-[11.5px] text-ink-3 italic">{attritionEvidence}</span>
+          )}
+        </div>
+      )}
+
+      {/* Find real contacts CTA / results */}
+      {!contacts && !searchMutation.isPending && !searchMutation.isError && (
+        <button
+          onClick={() => searchMutation.mutate()}
+          className="flex items-center gap-2 w-full justify-center py-2.5 border border-dashed border-line-2 rounded-[8px] text-[13px] text-ink-2 hover:border-accent hover:text-accent hover:bg-accent-soft transition-all"
+        >
+          <Search size={14} />
+          Find real contacts at this company via Apollo
+        </button>
+      )}
+
+      {searchMutation.isPending && (
+        <div className="flex items-center justify-center gap-2.5 py-4 text-[13px] text-ink-3">
+          <Loader2 size={16} className="animate-spin text-accent" />
+          Searching Apollo for contacts…
+        </div>
+      )}
+
+      {searchMutation.isError && (
+        <div className="flex items-center gap-3 bg-negative-soft rounded-[7px] px-4 py-3">
+          <AlertTriangle size={14} className="text-negative shrink-0" />
+          <span className="text-[12.5px] text-negative flex-1">{(searchMutation.error as Error).message}</span>
+          <button onClick={() => searchMutation.mutate()} className="text-[12px] text-negative underline">Retry</button>
+        </div>
+      )}
+
+      {contacts && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11.5px] text-ink-3">
+              {contacts.length} contact{contacts.length !== 1 ? 's' : ''} found
+              {cached && <span className="ml-1.5 text-ink-4">(cached)</span>}
+            </span>
+            <button
+              onClick={() => searchMutation.mutate()}
+              disabled={searchMutation.isPending}
+              className="flex items-center gap-1 text-[11.5px] text-ink-3 hover:text-ink transition-colors"
+            >
+              <RefreshCw size={11} className={searchMutation.isPending ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          </div>
+
+          {contacts.length === 0 ? (
+            <div className="text-center py-6 text-[13px] text-ink-3">
+              No matching contacts found on Apollo for this company.
+              <br />
+              <span className="text-[12px]">Try searching manually on LinkedIn with the recommended titles above.</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {grouped.map(({ persona, people }) => (
+                <div key={persona}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <PersonaTag persona={persona} />
+                    <span className="text-[11px] text-ink-4">{people.length} found</span>
+                  </div>
+                  <div className="space-y-2 mb-3">
+                    {people.map(contact => (
+                      <ContactRow
+                        key={contact.apolloId}
+                        contact={contact}
+                        companyId={companyId}
+                        onEmailRevealed={handleEmailRevealed}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -254,7 +553,7 @@ function Background({ card }: { card: CardType }) {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export function CompanyCard({ card, fitment }: Props) {
+export function CompanyCard({ card, fitment, companyId }: Props) {
   const { identity, hiring, buyingSignals, painPoints, synthesis, engagement } = card
   const score = fitment?.compositeScore ?? null
   const v = score != null ? verdict(score) : null
@@ -319,45 +618,13 @@ export function CompanyCard({ card, fitment }: Props) {
       {fitment && (
         <div className="px-5 py-5 border-b border-line">
           <SectionLabel>Who to contact</SectionLabel>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <ContactCard role="Economic buyer" rec={fitment.contacts.economicBuyer} />
-            <ContactCard role="Champion" rec={fitment.contacts.champion} />
-            {fitment.contacts.technicalEvaluator && (
-              <ContactCard role="Tech evaluator" rec={fitment.contacts.technicalEvaluator} />
-            )}
-          </div>
-
-          {/* Senior hires — high-value trigger */}
-          {hiring.seniorHiresLast90Days.length > 0 && (
-            <div className="mt-4 bg-surface-2 rounded-[7px] px-4 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Users size={13} className="text-ink-3" />
-                <span className="text-[11.5px] font-medium text-ink-2">New senior hires to target (last 90 days)</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {hiring.seniorHiresLast90Days.map((hire, i) => (
-                  <span key={i} className="text-[12px] text-ink bg-surface border border-line px-2.5 py-1 rounded-[5px]">
-                    {hire}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Attrition risk */}
-          {hiring.attritionRisk && hiring.attritionRisk !== 'Unknown' && (
-            <div className="mt-3 flex items-start gap-2.5">
-              <span className="text-[11.5px] text-ink-3 shrink-0 mt-0.5">Attrition risk:</span>
-              <span className={`text-[11.5px] font-medium px-2 py-0.5 rounded-full ${
-                hiring.attritionRisk === 'High'   ? 'bg-negative-soft text-negative' :
-                hiring.attritionRisk === 'Medium' ? 'bg-warning-soft text-warning' :
-                                                    'bg-positive-soft text-positive'
-              }`}>{hiring.attritionRisk}</span>
-              {hiring.attritionEvidence && (
-                <span className="text-[11.5px] text-ink-3 italic">{hiring.attritionEvidence}</span>
-              )}
-            </div>
-          )}
+          <WhoToContact
+            companyId={companyId}
+            fitment={fitment}
+            hiring={hiring}
+            attritionRisk={hiring.attritionRisk}
+            attritionEvidence={hiring.attritionEvidence}
+          />
         </div>
       )}
 
