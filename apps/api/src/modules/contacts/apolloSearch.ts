@@ -113,6 +113,7 @@ async function apolloPeopleSearch(
     const res = await axios.post(
       `${APOLLO_BASE}/people/search`,
       {
+        api_key: apiKey,             // some Apollo plans require key in body
         organization_domains: [domain],
         person_titles: titles,
         per_page: 25,
@@ -131,6 +132,7 @@ async function apolloPeopleSearch(
   } catch (err: any) {
     if (err?.response?.status === 429) throw new Error('RATE_LIMITED:apollo_people')
     if (err?.response?.status === 422) return [] // bad domain, no results
+    if (err?.response?.status === 403) throw new Error('APOLLO_PLAN:people_search requires an Apollo API plan upgrade')
     throw err
   }
 }

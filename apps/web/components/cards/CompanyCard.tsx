@@ -356,13 +356,25 @@ function WhoToContact({
         </div>
       )}
 
-      {searchMutation.isError && (
-        <div className="flex items-center gap-3 bg-negative-soft rounded-[7px] px-4 py-3">
-          <AlertTriangle size={14} className="text-negative shrink-0" />
-          <span className="text-[12.5px] text-negative flex-1">{(searchMutation.error as Error).message}</span>
-          <button onClick={() => searchMutation.mutate()} className="text-[12px] text-negative underline">Retry</button>
-        </div>
-      )}
+      {searchMutation.isError && (() => {
+        const msg = (searchMutation.error as Error).message
+        const isPlan = msg.includes('plan') || msg.includes('402')
+        return (
+          <div className={`flex items-start gap-3 rounded-[7px] px-4 py-3 ${isPlan ? 'bg-warning-soft' : 'bg-negative-soft'}`}>
+            <AlertTriangle size={14} className={`shrink-0 mt-0.5 ${isPlan ? 'text-warning' : 'text-negative'}`} />
+            <div className="flex-1">
+              <span className={`text-[12.5px] ${isPlan ? 'text-warning' : 'text-negative'}`}>{msg}</span>
+              {isPlan && (
+                <a href="https://apollo.io" target="_blank" rel="noopener noreferrer"
+                  className="block text-[11.5px] text-warning underline mt-0.5">
+                  Upgrade Apollo plan
+                </a>
+              )}
+            </div>
+            {!isPlan && <button onClick={() => searchMutation.mutate()} className="text-[12px] text-negative underline shrink-0">Retry</button>}
+          </div>
+        )
+      })()}
 
       {contacts && (
         <div>

@@ -86,7 +86,10 @@ export async function companiesRoutes(app: FastifyInstance) {
     } catch (err: any) {
       app.log.error({ err, companyId: id }, 'Apollo contact search failed')
       if (err?.message?.startsWith('RATE_LIMITED')) {
-        return reply.status(429).send({ error: 'Apollo rate limit reached — try again in a minute' })
+        return reply.status(429).send({ error: 'Apollo rate limit reached - try again in a minute' })
+      }
+      if (err?.message?.startsWith('APOLLO_PLAN')) {
+        return reply.status(402).send({ error: 'People search requires an Apollo API plan with people search access. Upgrade at apollo.io or add the API access add-on.' })
       }
       return reply.status(500).send({ error: err?.message ?? 'Contact search failed' })
     }
