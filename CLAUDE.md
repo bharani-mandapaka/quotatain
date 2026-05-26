@@ -41,6 +41,8 @@ Migrations run automatically on every deploy. Safe to run repeatedly.
 - **Prisma generate**: runs scoped to `@quotatain/api` during build — patches the shared virtual
   store entry used by both packages.
 - **Dark mode**: intentionally disabled in `globals.css` (business app, light only).
+- **Em dashes**: never use `—` in app UI strings. Use `-` (hyphen), `:`, or rewrite the sentence. AI-generated synthesis content may contain em dashes — that is expected and not fixable at the UI layer.
+- **Run progress polling**: KNOWN BUG — the run detail page does not auto-poll while PROCESSING. The progress counter stays at 0% until the user manually refreshes. Fix needed: poll `GET /api/runs/:id` every ~3s while `run.status === 'PROCESSING'`.
 
 ## Design System (saffron — shipped to production 2026-05-26)
 
@@ -151,3 +153,32 @@ Required for full functionality:
 - `TAVILY_API_KEY`    — app.tavily.com (free 1000/month, powers web-search enrichment)
 - `APOLLO_API_KEY`    — contact + company enrichment
 - `NEWSAPI_KEY`       — news signals
+
+## Production Smoke Test (2026-05-26)
+
+End-to-end run against live prod (Vercel + Railway):
+
+| Check | Result |
+|---|---|
+| Login | Pass |
+| New Run creation | Pass |
+| Run queued and processed | Pass — ~50s Standard depth |
+| Fitment score (Infosys) | 82 / Strong fit |
+| All 6 dimension scores populated | Pass |
+| Buying signal summary | Pass |
+| Persona cards (CHRO, Head of TA, HR Tech Mgr) | Pass — all high confidence |
+| Attrition risk with evidence | Pass — Medium |
+| LinkedIn search links | Pass — 3 deep-search buttons with pre-filled title + company |
+| LinkedIn URL input + Add button | Pass — renders correctly |
+| Buying signals (3) | Pass |
+| Talking points (4) | Pass |
+| Risk flags | Pass |
+| Export CSV button | Pass |
+| Run progress live polling | **FAIL** — stays at 0% until page refresh |
+
+**Observations:**
+- Standard depth: ~50s for 1 company on Railway (cold-start may add ~10-15s on first run after idle)
+- Headcount for large companies (Infosys 323,000) renders in Indian format correctly: `3,23,000`
+- Confidence score is ~40-50% when primary source is Tavily web search — expected, surfaced as a footer note
+- Raw headcount corruption observed (source returned 9; worker overrode to known public figure and surfaced a risk flag)
+- AI-generated synthesis text may contain em dashes — this is Claude output, not app UI code
