@@ -5,10 +5,12 @@
  * Falls back gracefully if lookup times out or returns no data.
  */
 
+import { createRequire } from 'node:module'
 import type { CompanyDataProvider, ProviderResult } from './base.js'
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const whoisLookup = require('whois') as {
+// whois is a CJS-only package; createRequire lets us use it safely from ESM
+const _require = createRequire(import.meta.url)
+const whoisLookup = _require('whois') as {
   lookup: (domain: string, opts: Record<string, unknown>, cb: (err: Error | null, data: string) => void) => void
 }
 
