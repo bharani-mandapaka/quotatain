@@ -29,25 +29,32 @@ export class TavilyProvider implements CompanyDataProvider {
     if (!name) return null
 
     try {
-      const [overviewRes, newsRes] = await Promise.allSettled([
+      const year = new Date().getFullYear()
+      const [overviewRes, newsRes, jobsRes] = await Promise.allSettled([
         this.search(
           `"${name}" company India overview employees headcount funding headquarters industry`,
           'advanced',
           'general',
         ),
         this.search(
-          `"${name}" India news 2025 hiring leadership announcement`,
+          `"${name}" India news ${year} hiring leadership announcement`,
           'basic',
           'news',
+        ),
+        this.search(
+          `"${name}" jobs hiring ${year} skills requirements experience`,
+          'basic',
+          'general',
         ),
       ])
 
       const overview = overviewRes.status === 'fulfilled' ? overviewRes.value : null
       const newsData = newsRes.status === 'fulfilled' ? newsRes.value : null
+      const jobsData = jobsRes.status === 'fulfilled' ? jobsRes.value : null
 
       if (!overview && !newsData) return null
 
-      const data = this.extractCompanyData(name, overview, newsData)
+      const data = this.extractCompanyData(name, overview, newsData, jobsData)
       const confidence = this.computeConfidence(data)
 
       return {
@@ -98,6 +105,7 @@ export class TavilyProvider implements CompanyDataProvider {
     companyName: string,
     overview: TavilyResponse | null,
     news: TavilyResponse | null,
+    jobs: TavilyResponse | null = null,
   ): RawCompanyData {
     const allSnippets = [
       ...(overview?.results ?? []).map((r) => r.content),
@@ -184,6 +192,10 @@ export class TavilyProvider implements CompanyDataProvider {
         source: extractDomain(r.url),
       }))
     if (newsArticles.length > 0) data.recentNews = newsArticles
+
+    // Job listing snippets — passed to Claude for hiring requirements extraction
+    const jobSnippets = (jobs?.results ?? []).map((r) => r.content).filter(Boolean)
+    if (jobSnippets.length > 0) data.jobListingSnippets = jobSnippets
 
     return data
   }

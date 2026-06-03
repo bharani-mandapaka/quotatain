@@ -9,6 +9,8 @@ const SOURCE_PRIORITY: Record<string, number> = {
   builtwith: 7,     // Best for tech stack
   newsapi: 6,
   agentai: 5,
+  similarweb: 4,   // supplementary traffic data
+  whois: 3,        // supplementary domain data
 }
 
 type FieldKey = keyof RawCompanyData
@@ -18,6 +20,7 @@ const ARRAY_MERGE_FIELDS: FieldKey[] = [
   'marketingTools', 'collaborationTools', 'analyticsTools',
   'securityTools', 'otherTools', 'recentNews', 'reviewSnippets',
   'seniorHiresLast90Days', 'lastRoundInvestors', 'fundingHistory', 'directors',
+  'jobListingSnippets', 'competitorNames', 'topTrafficCountries',
 ]
 
 export function mergeProviderResults(results: ProviderResult[]): {

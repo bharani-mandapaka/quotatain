@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronUp, Copy, Check, AlertTriangle,
   TrendingUp, Users, Zap, Target, Building2,
   Search, Loader2, ExternalLink, Mail, UserCircle2,
+  BookOpen, MessageSquare, ShieldAlert,
 } from 'lucide-react'
 
 interface Props {
@@ -258,6 +259,89 @@ function ContactRow({
   )
 }
 
+function HiringRequirements({
+  hiring,
+}: {
+  hiring: CardType['hiring']
+}) {
+  const [rolesOpen, setRolesOpen] = useState(false)
+  const hasSkills = hiring.skillsInDemand.length > 0
+  const hasThemes = hiring.hiringThemes.length > 0
+  const hasRoles = hiring.targetRoles.length > 0
+  if (!hasSkills && !hasThemes && !hasRoles) return null
+
+  return (
+    <div className="mb-4 bg-surface-2 rounded-[7px] px-4 py-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <Search size={13} className="text-ink-3" />
+          <span className="text-[11.5px] font-medium text-ink-2">What they're actively hiring for</span>
+        </div>
+        {hasRoles && (
+          <button
+            onClick={() => setRolesOpen(o => !o)}
+            className="flex items-center gap-1 text-[11px] text-ink-3 hover:text-ink transition-colors"
+          >
+            {rolesOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            {hiring.targetRoles.length} role{hiring.targetRoles.length !== 1 ? 's' : ''}
+          </button>
+        )}
+      </div>
+
+      {/* Themes */}
+      {hasThemes && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {hiring.hiringThemes.map((theme, i) => (
+            <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-info-soft text-info">{theme}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Skills */}
+      {hasSkills && (
+        <div className="flex flex-wrap gap-1.5">
+          {hiring.skillsInDemand.map((skill, i) => (
+            <span key={i} className="text-[11.5px] px-2.5 py-1 rounded-[5px] bg-surface border border-line text-ink-2">{skill}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Roles table (expandable) */}
+      {rolesOpen && hasRoles && (
+        <div className="mt-3 space-y-1.5">
+          {hiring.targetRoles.map((role, i) => (
+            <div key={i} className="bg-surface border border-line rounded-[6px] px-3 py-2">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div>
+                  <span className="text-[12.5px] font-medium text-ink">{role.title}</span>
+                  <span className="ml-2 text-[11px] text-ink-3">{role.department}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[10.5px] font-medium px-1.5 py-0.5 rounded-full ${
+                    role.seniority === 'executive' || role.seniority === 'lead' ? 'bg-accent-soft text-accent' :
+                    role.seniority === 'senior' ? 'bg-warning-soft text-warning' :
+                    'bg-surface-2 text-ink-3'
+                  }`}>{role.seniority}</span>
+                  {role.estimatedCount && (
+                    <span className="text-[11px] text-ink-3">{role.estimatedCount} open</span>
+                  )}
+                </div>
+              </div>
+              {role.skills.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {role.skills.map((s, j) => (
+                    <span key={j} className="text-[10.5px] px-1.5 py-0.5 bg-surface-2 rounded text-ink-3">{s}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WhoToContact({
   companyId,
   companyName,
@@ -353,6 +437,9 @@ function WhoToContact({
           </div>
         </div>
       )}
+
+      {/* Hiring requirements */}
+      <HiringRequirements hiring={hiring} />
 
       {/* Attrition risk */}
       {attritionRisk && attritionRisk !== 'Unknown' && (
@@ -462,6 +549,232 @@ function WhoToContact({
   )
 }
 
+// ─── Sales Playbook ───────────────────────────────────────────────────────────
+
+type PersonaKey = 'economicBuyer' | 'champion' | 'technicalEvaluator'
+
+const PERSONA_TAB_LABEL: Record<PersonaKey, string> = {
+  economicBuyer: 'Economic Buyer',
+  champion: 'Champion',
+  technicalEvaluator: 'Tech Evaluator',
+}
+
+function SalesPlaybook({ guidance }: { guidance: NonNullable<FitmentScore['sellingGuidance']> }) {
+  const [activeTab, setActiveTab] = useState<PersonaKey>('economicBuyer')
+  const [openObjection, setOpenObjection] = useState<number | null>(null)
+
+  const tabs: PersonaKey[] = (['economicBuyer', 'champion', 'technicalEvaluator'] as PersonaKey[]).filter(
+    (k) => k !== 'technicalEvaluator' || guidance.talkingPointsByPersona.technicalEvaluator !== null
+  )
+
+  const activeTalkingPoints =
+    activeTab === 'technicalEvaluator'
+      ? guidance.talkingPointsByPersona.technicalEvaluator ?? []
+      : guidance.talkingPointsByPersona[activeTab]
+
+  return (
+    <div className="space-y-4">
+      {/* Positioning statement */}
+      <div className="flex items-start gap-2.5 bg-accent-soft border border-accent-line rounded-[8px] px-4 py-3">
+        <Zap size={14} className="text-accent shrink-0 mt-0.5" />
+        <p className="text-[13px] text-accent leading-relaxed">{guidance.positioningStatement}</p>
+      </div>
+
+      {/* Per-persona talking points */}
+      <div>
+        <div className="flex gap-1 mb-3 border-b border-line">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-2 text-[12px] font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-ink-3 hover:text-ink-2'
+              }`}
+            >
+              {PERSONA_TAB_LABEL[tab]}
+            </button>
+          ))}
+        </div>
+        <ul className="space-y-2">
+          {activeTalkingPoints.map((point, i) => (
+            <li key={i} className="flex items-start gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0 mt-1.5" />
+              <span className="text-[13px] text-ink-2 leading-relaxed">{point}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Objection handlers */}
+      {guidance.objections.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldAlert size={13} className="text-ink-3" />
+            <span className="text-[11.5px] font-medium text-ink-3">Likely objections</span>
+          </div>
+          <div className="space-y-1.5">
+            {guidance.objections.map((obj, i) => (
+              <div key={i} className="border border-line rounded-[7px] overflow-hidden">
+                <button
+                  onClick={() => setOpenObjection(openObjection === i ? null : i)}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-left hover:bg-hover transition-colors"
+                >
+                  <span className="text-[12.5px] font-medium text-ink">{obj.concern}</span>
+                  {openObjection === i
+                    ? <ChevronUp size={13} className="text-ink-3 shrink-0" />
+                    : <ChevronDown size={13} className="text-ink-3 shrink-0" />
+                  }
+                </button>
+                {openObjection === i && (
+                  <div className="px-3.5 pb-3 bg-surface-2">
+                    <p className="text-[12.5px] text-ink-2 leading-relaxed">{obj.response}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Call to action */}
+      <div className="flex items-start gap-2.5 border border-line-2 rounded-[7px] px-4 py-3">
+        <MessageSquare size={13} className="text-ink-3 shrink-0 mt-0.5" />
+        <div>
+          <span className="text-[10.5px] font-medium text-ink-3 uppercase tracking-[0.06em]">Recommended next step</span>
+          <p className="text-[13px] text-ink font-medium mt-0.5">{guidance.callToAction}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Competitors section ──────────────────────────────────────────────────────
+
+type CompanyCardType = import('@quotatain/shared').CompanyCard
+
+function TrafficBadge({ trend }: { trend: string }) {
+  if (trend === 'growing') return <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-positive-soft text-positive">↑ Growing</span>
+  if (trend === 'declining') return <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-negative-soft text-negative">↓ Declining</span>
+  if (trend === 'stable') return <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-surface-2 text-ink-3">→ Stable</span>
+  return null
+}
+
+function TrafficCompareBadge({ comparison }: { comparison: string }) {
+  if (comparison === 'higher') return <span className="text-[10.5px] px-1.5 py-0.5 rounded bg-negative-soft text-negative">Higher traffic</span>
+  if (comparison === 'lower') return <span className="text-[10.5px] px-1.5 py-0.5 rounded bg-positive-soft text-positive">Lower traffic</span>
+  if (comparison === 'similar') return <span className="text-[10.5px] px-1.5 py-0.5 rounded bg-surface-2 text-ink-3">Similar traffic</span>
+  return null
+}
+
+function DifficultyBadge({ difficulty }: { difficulty: string }) {
+  const cls =
+    difficulty === 'high' ? 'bg-negative-soft text-negative' :
+    difficulty === 'medium' ? 'bg-warning-soft text-warning' :
+    'bg-positive-soft text-positive'
+  return <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${cls}`}>{difficulty} difficulty</span>
+}
+
+function Competitors({ competitors, webPresence }: {
+  competitors: CompanyCardType['competitors']
+  webPresence: CompanyCardType['webPresence']
+}) {
+  const hasRivals = competitors.marketRivals.length > 0
+  const hasDisplacement = competitors.displacementTargets.length > 0
+  if (!hasRivals && !hasDisplacement && !webPresence) return null
+
+  return (
+    <div>
+      {/* Web presence summary */}
+      {webPresence && (webPresence.estimatedMonthlyVisits != null || webPresence.trafficTrend !== 'unknown' || webPresence.domainAgeYears != null) && (
+        <div className="flex flex-wrap items-center gap-3 mb-4 bg-surface-2 rounded-[7px] px-4 py-3">
+          {webPresence.estimatedMonthlyVisits != null && (
+            <div>
+              <span className="text-[10.5px] text-ink-3 block">Monthly visits</span>
+              <span className="text-[13.5px] font-medium text-ink font-mono">
+                {webPresence.estimatedMonthlyVisits >= 1e6
+                  ? `${(webPresence.estimatedMonthlyVisits / 1e6).toFixed(1)}M`
+                  : webPresence.estimatedMonthlyVisits >= 1e3
+                    ? `${(webPresence.estimatedMonthlyVisits / 1e3).toFixed(0)}K`
+                    : webPresence.estimatedMonthlyVisits.toLocaleString()}
+              </span>
+            </div>
+          )}
+          {webPresence.trafficTrend !== 'unknown' && (
+            <div>
+              <span className="text-[10.5px] text-ink-3 block mb-0.5">Traffic trend</span>
+              <TrafficBadge trend={webPresence.trafficTrend} />
+            </div>
+          )}
+          {webPresence.domainAgeYears != null && (
+            <div>
+              <span className="text-[10.5px] text-ink-3 block">Domain age</span>
+              <span className="text-[13px] font-medium text-ink">{webPresence.domainAgeYears}y</span>
+            </div>
+          )}
+          {webPresence.topTrafficCountries.length > 0 && (
+            <div>
+              <span className="text-[10.5px] text-ink-3 block">Top markets</span>
+              <span className="text-[12px] text-ink-2">{webPresence.topTrafficCountries.slice(0, 3).join(', ')}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Displacement targets — accent highlight */}
+      {hasDisplacement && (
+        <div className="mb-4">
+          <div className="text-[10.5px] font-medium text-ink-3 uppercase tracking-[0.06em] mb-2">Displacement opportunities</div>
+          <div className="space-y-2">
+            {competitors.displacementTargets.map((target, i) => (
+              <div key={i} className="flex items-start gap-3 bg-accent-soft border border-accent-line rounded-[7px] px-4 py-3">
+                <Zap size={13} className="text-accent shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-[13px] font-medium text-ink">{target.toolName}</span>
+                    <span className="text-[10.5px] px-1.5 py-0.5 rounded bg-surface text-ink-3 border border-line">{target.category}</span>
+                    <DifficultyBadge difficulty={target.difficulty} />
+                  </div>
+                  <p className="text-[12.5px] text-ink-2 leading-relaxed">{target.displacementAngle}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Market rivals */}
+      {hasRivals && (
+        <div>
+          <div className="text-[10.5px] font-medium text-ink-3 uppercase tracking-[0.06em] mb-2">Their market rivals</div>
+          <div className="space-y-2">
+            {competitors.marketRivals.map((rival, i) => (
+              <div key={i} className="flex items-start gap-3 border border-line rounded-[7px] px-4 py-3 bg-surface">
+                <Building2 size={13} className="text-ink-3 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    {rival.domain ? (
+                      <a href={`https://${rival.domain}`} target="_blank" rel="noopener noreferrer"
+                        className="text-[13px] font-medium text-ink hover:text-accent flex items-center gap-1">
+                        {rival.name}<ExternalLink size={10} className="text-ink-4" />
+                      </a>
+                    ) : (
+                      <span className="text-[13px] font-medium text-ink">{rival.name}</span>
+                    )}
+                    <TrafficCompareBadge comparison={rival.trafficComparison} />
+                  </div>
+                  <p className="text-[12px] text-ink-3 leading-snug">{rival.positioningNote}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Collapsible background section ─────────────────────────────────────────
 
 function Background({ card }: { card: CardType }) {
@@ -502,6 +815,8 @@ function Background({ card }: { card: CardType }) {
               <Field label="Type" value={identity.companyType} />
               <Field label="CIN" value={identity.cin} />
               <Field label="NSE / BSE" value={identity.nseTicker ?? identity.bseTicker} />
+              <Field label="Domain age" value={card.webPresence?.domainAgeYears != null ? `${card.webPresence.domainAgeYears} years` : null} />
+              <Field label="Registrar" value={card.webPresence?.domainRegistrar ?? null} />
             </div>
             <div>
               <SectionLabel>Scale & Revenue</SectionLabel>
@@ -676,6 +991,17 @@ export function CompanyCard({ card, fitment, companyId }: Props) {
         </div>
       )}
 
+      {/* ── 3b. SALES PLAYBOOK ──────────────────────────────────────────── */}
+      {fitment?.sellingGuidance && (
+        <div className="px-5 py-5 border-b border-line">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen size={13} className="text-ink-3" />
+            <span className="text-[10.5px] font-medium text-ink-3 uppercase tracking-[0.08em]">Sales playbook</span>
+          </div>
+          <SalesPlaybook guidance={fitment.sellingGuidance} />
+        </div>
+      )}
+
       {/* ── 4. WHAT TO SAY ──────────────────────────────────────────────── */}
       {synthesis.talkingPoints.length > 0 && (
         <div className="px-5 py-5 border-b border-line">
@@ -748,6 +1074,14 @@ export function CompanyCard({ card, fitment, companyId }: Props) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── 6b. COMPETITORS ─────────────────────────────────────────────── */}
+      {(card.competitors.marketRivals.length > 0 || card.competitors.displacementTargets.length > 0 || card.webPresence) && (
+        <div className="px-5 py-5 border-b border-line">
+          <SectionLabel>Competitors &amp; web presence</SectionLabel>
+          <Competitors competitors={card.competitors} webPresence={card.webPresence} />
         </div>
       )}
 

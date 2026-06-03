@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
-import type { CompanyCard, ProductProfile, FitmentScore, DimensionWeights } from '@quotatain/shared'
-import { FitmentScoreSchema } from '@quotatain/shared'
+import type { CompanyCard, ProductProfile, FitmentScore, DimensionWeights, SellingGuidance } from '@quotatain/shared'
+import { FitmentScoreSchema, SellingGuidanceSchema } from '@quotatain/shared'
 
 const client = new Anthropic()
 
@@ -239,6 +239,73 @@ Return:
   }
 }
 
+// ─── Sales Playbook guidance ───────────────────────────────────────────────
+
+async function generateSellingGuidance(
+  card: CompanyCard,
+  profile: ProductProfile,
+  breakdown: FitmentScore['breakdown'],
+): Promise<SellingGuidance | null> {
+  const techUsed = [card.techStack.ats, card.techStack.hris, card.techStack.crm, card.techStack.erp]
+    .filter(Boolean).join(', ') || 'Unknown'
+  const pains = card.painPoints.map((p) => `- ${p.point}`).join('\n') || 'None detected'
+  const signals = card.buyingSignals.map((s) => `- ${s.signal}`).join('\n') || 'None'
+
+  const prompt = `You are a B2B sales coach. Generate specific, evidence-based selling guidance for a rep about to approach this company.
+
+PRODUCT: ${profile.name}
+Capabilities: ${profile.capabilities.join('; ')}
+Problems solved: ${profile.problemsSolved.join('; ')}
+Competitors it displaces: ${profile.displacedCompetitors.join(', ') || 'N/A'}
+Economic buyer titles: ${profile.primaryBuyerTitles.join(', ')}
+Champion titles: ${profile.secondaryBuyerTitles.join(', ')}
+Technical evaluator titles: ${profile.technicalEvaluatorTitles.join(', ') || 'none'}
+
+COMPANY: ${card.identity.name} | ${card.identity.industry} | ${card.scale.headcount?.toLocaleString() ?? 'unknown'} employees | ${card.funding.stage}
+Current tech stack: ${techUsed}
+Pain points:
+${pains}
+Buying signals:
+${signals}
+Research talking points: ${card.synthesis.talkingPoints.join(' | ')}
+Fit scores: Industry ${breakdown.industryFit.score}/100, Size ${breakdown.sizeFit.score}/100, Tech ${breakdown.techStackFit.score}/100, Pain ${breakdown.painPointFit.score}/100
+
+Instructions:
+- positioningStatement: 2-3 sentences — WHY this product for THIS company right now, referencing specific evidence
+- talkingPointsByPersona: 2-3 SPECIFIC bullet points per persona, grounded in company data (not generic)
+- objections: the 2-3 most likely pushbacks from THIS company and direct responses
+- callToAction: one specific recommended next step (e.g. "Propose a 30-day pilot with the TA team")
+- technicalEvaluator array: null if profile.technicalEvaluatorTitles is empty
+
+Respond with JSON only:
+{
+  "positioningStatement": "...",
+  "talkingPointsByPersona": {
+    "economicBuyer": ["...", "...", "..."],
+    "champion": ["...", "..."],
+    "technicalEvaluator": ["...", "..."] or null
+  },
+  "objections": [
+    {"concern": "...", "response": "..."},
+    {"concern": "...", "response": "..."}
+  ],
+  "callToAction": "..."
+}`
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    })
+    const text = response.content[0]?.type === 'text' ? response.content[0].text : '{}'
+    const json = JSON.parse(text.match(/\{[\s\S]*\}/)![0])
+    return SellingGuidanceSchema.parse(json)
+  } catch {
+    return null
+  }
+}
+
 // ─── Main scoring function ─────────────────────────────────────────────────
 
 export async function scoreFitment(
@@ -267,9 +334,13 @@ export async function scoreFitment(
     engagementFit.score * weights.engagementFit
   )
 
+  const breakdown = { industryFit, sizeFit, techStackFit, painPointFit, buyingSignalFit, engagementFit }
+  const sellingGuidance = await generateSellingGuidance(card, profile, breakdown)
+
   return FitmentScoreSchema.parse({
     compositeScore: Math.min(100, Math.max(0, composite)),
-    breakdown: { industryFit, sizeFit, techStackFit, painPointFit, buyingSignalFit, engagementFit },
+    breakdown,
     contacts,
+    sellingGuidance,
   })
 }

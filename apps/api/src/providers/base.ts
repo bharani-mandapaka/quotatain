@@ -58,6 +58,17 @@ export interface RawCompanyData {
   leadershipChangeDetail?: string
   fresherHiringPct?: number
   avgTenureMonths?: number
+  // Job listings (for hiring requirements extraction)
+  jobListingSnippets?: string[]
+  // Competitors (raw names; Claude structures into the competitors schema)
+  competitorNames?: string[]
+  // Web presence (from SimilarWeb Tavily fallback)
+  estimatedMonthlyVisits?: number | null
+  trafficTrend?: 'growing' | 'stable' | 'declining' | 'unknown'
+  topTrafficCountries?: string[]
+  // WHOIS
+  domainAgeYears?: number | null
+  domainRegistrar?: string | null
   // Reviews
   ambitionBoxRating?: number
   ambitionBoxWLBRating?: number

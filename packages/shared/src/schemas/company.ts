@@ -124,6 +124,16 @@ export const CompanyCardSchema = z.object({
     avgTenureMonths: z.number().nullable(),
     attritionRisk: AttritionRiskSchema,
     attritionEvidence: z.string().nullable(),
+    // Hiring requirements — what skills/roles they're actively recruiting for
+    skillsInDemand: z.array(z.string()).default([]),
+    hiringThemes: z.array(z.string()).default([]),
+    targetRoles: z.array(z.object({
+      title: z.string(),
+      department: z.string(),
+      seniority: z.enum(['entry', 'mid', 'senior', 'lead', 'executive']),
+      skills: z.array(z.string()),
+      estimatedCount: z.number().nullable(),
+    })).default([]),
   }),
   techStack: TechStackSchema,
   buyingSignals: z.array(BuyingSignalSchema),
@@ -147,6 +157,29 @@ export const CompanyCardSchema = z.object({
     contentDownloads30Days: z.number(),
     lastVisitDate: z.string().nullable(),
   }).nullable(),
+  competitors: z.object({
+    marketRivals: z.array(z.object({
+      name: z.string(),
+      domain: z.string().nullable(),
+      positioningNote: z.string(),
+      trafficComparison: z.enum(['higher', 'similar', 'lower', 'unknown']),
+    })).default([]),
+    displacementTargets: z.array(z.object({
+      toolName: z.string(),
+      category: z.string(),
+      displacementAngle: z.string(),
+      difficulty: z.enum(['high', 'medium', 'low']),
+    })).default([]),
+  }).default({ marketRivals: [], displacementTargets: [] }),
+
+  webPresence: z.object({
+    estimatedMonthlyVisits: z.number().nullable(),
+    trafficTrend: z.enum(['growing', 'stable', 'declining', 'unknown']),
+    domainAgeYears: z.number().nullable(),
+    domainRegistrar: z.string().nullable(),
+    topTrafficCountries: z.array(z.string()),
+  }).nullable().default(null),
+
   synthesis: z.object({
     talkingPoints: z.array(z.string()).min(1).max(5),
     buyingSignalSummary: z.string().nullable(),

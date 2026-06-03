@@ -17,6 +17,20 @@ export const DimensionScoreSchema = z.object({
   evidence: z.string(),
 })
 
+export const SellingGuidanceSchema = z.object({
+  positioningStatement: z.string(),
+  talkingPointsByPersona: z.object({
+    economicBuyer: z.array(z.string()),
+    champion: z.array(z.string()),
+    technicalEvaluator: z.array(z.string()).nullable(),
+  }),
+  objections: z.array(z.object({
+    concern: z.string(),
+    response: z.string(),
+  })).max(3),
+  callToAction: z.string(),
+})
+
 export const FitmentScoreSchema = z.object({
   compositeScore: z.number().min(0).max(100),
   breakdown: z.object({
@@ -47,6 +61,7 @@ export const FitmentScoreSchema = z.object({
       outreachAngle: z.string(),
     }).nullable(),
   }),
+  sellingGuidance: SellingGuidanceSchema.nullable().default(null),
 })
 
 export const ProductProfileSchema = z.object({
@@ -75,6 +90,7 @@ export const ProductProfileSchema = z.object({
 export type FitmentScore = z.infer<typeof FitmentScoreSchema>
 export type ProductProfile = z.infer<typeof ProductProfileSchema>
 export type DimensionWeights = z.infer<typeof DimensionWeightsSchema>
+export type SellingGuidance = z.infer<typeof SellingGuidanceSchema>
 
 export const DEFAULT_DIMENSION_WEIGHTS: DimensionWeights = {
   industryFit: 0.20,

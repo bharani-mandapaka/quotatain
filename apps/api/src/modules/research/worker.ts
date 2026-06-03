@@ -12,6 +12,8 @@ import { ToflerProvider } from '../../providers/tofler.js'
 import { NseProvider } from '../../providers/nse.js'
 import { NewsApiProvider } from '../../providers/newsapi.js'
 import { TavilyProvider } from '../../providers/tavily.js'
+import { WhoisProvider } from '../../providers/whois.js'
+import { SimilarWebProvider } from '../../providers/similarweb.js'
 import type { CompanyDataProvider } from '../../providers/base.js'
 import type { ProductProfile } from '@quotatain/shared'
 
@@ -25,7 +27,9 @@ function buildProviders(): CompanyDataProvider[] {
   if (process.env.TOFLER_API_KEY) providers.push(new ToflerProvider(process.env.TOFLER_API_KEY))
   if (process.env.NEWSAPI_KEY) providers.push(new NewsApiProvider(process.env.NEWSAPI_KEY))
   if (process.env.TAVILY_API_KEY) providers.push(new TavilyProvider(process.env.TAVILY_API_KEY))
+  if (process.env.TAVILY_API_KEY) providers.push(new SimilarWebProvider(process.env.TAVILY_API_KEY))
   providers.push(new NseProvider()) // no key needed
+  providers.push(new WhoisProvider()) // no key needed
 
   return providers
 }
