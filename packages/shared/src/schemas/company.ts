@@ -130,7 +130,7 @@ export const CompanyCardSchema = z.object({
     targetRoles: z.array(z.object({
       title: z.string(),
       department: z.string(),
-      seniority: z.enum(['entry', 'mid', 'senior', 'lead', 'executive']),
+      seniority: caseInsensitiveEnum(['entry', 'mid', 'senior', 'lead', 'executive'] as const),
       skills: z.array(z.string()),
       estimatedCount: z.number().nullable(),
     })).default([]),
@@ -162,13 +162,13 @@ export const CompanyCardSchema = z.object({
       name: z.string(),
       domain: z.string().nullable(),
       positioningNote: z.string(),
-      trafficComparison: z.enum(['higher', 'similar', 'lower', 'unknown']),
+      trafficComparison: caseInsensitiveEnum(['higher', 'similar', 'lower', 'unknown'] as const),
     })).default([]),
     displacementTargets: z.array(z.object({
       toolName: z.string(),
       category: z.string(),
       displacementAngle: z.string(),
-      difficulty: z.enum(['high', 'medium', 'low']),
+      difficulty: caseInsensitiveEnum(['high', 'medium', 'low'] as const),
     })).default([]),
   }).default({ marketRivals: [], displacementTargets: [] }),
 

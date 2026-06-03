@@ -27,7 +27,7 @@ export const SellingGuidanceSchema = z.object({
   objections: z.array(z.object({
     concern: z.string(),
     response: z.string(),
-  })).max(3),
+  })),
   callToAction: z.string(),
 })
 

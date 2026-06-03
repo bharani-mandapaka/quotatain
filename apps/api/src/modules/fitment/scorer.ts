@@ -299,7 +299,11 @@ Respond with JSON only:
       messages: [{ role: 'user', content: prompt }],
     })
     const text = response.content[0]?.type === 'text' ? response.content[0].text : '{}'
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)![0])
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    const json = JSON.parse(match[0])
+    // Cap objections at 3 before validation
+    if (Array.isArray(json.objections)) json.objections = json.objections.slice(0, 3)
     return SellingGuidanceSchema.parse(json)
   } catch {
     return null
