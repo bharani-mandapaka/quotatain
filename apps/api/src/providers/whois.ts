@@ -1,18 +1,13 @@
 /**
- * WhoisProvider — domain registration data via direct IANA WHOIS lookup.
+ * WhoisProvider — domain registration data via direct TCP WHOIS lookup.
  *
- * No API key required. Free. Used for domain age and registrar.
- * Falls back gracefully if lookup times out or returns no data.
+ * Zero npm dependencies — uses Node.js built-in `net` module.
+ * Connects to whois.iana.org:43, follows referrals, extracts domain age
+ * and registrar. Falls back gracefully on timeout or parse failure.
  */
 
-import { createRequire } from 'node:module'
+import net from 'node:net'
 import type { CompanyDataProvider, ProviderResult } from './base.js'
-
-// whois is a CJS-only package; createRequire lets us use it safely from ESM
-const _require = createRequire(import.meta.url)
-const whoisLookup = _require('whois') as {
-  lookup: (domain: string, opts: Record<string, unknown>, cb: (err: Error | null, data: string) => void) => void
-}
 
 export class WhoisProvider implements CompanyDataProvider {
   readonly name = 'whois'
@@ -22,8 +17,16 @@ export class WhoisProvider implements CompanyDataProvider {
     const apex = apexDomain(domain)
 
     try {
-      const raw = await lookupWithTimeout(apex, 8000)
-      if (!raw) return null
+      // First query IANA to find the authoritative WHOIS server
+      const ianaRaw = await tcpWhois(apex, 'whois.iana.org', 6000)
+      if (!ianaRaw) return null
+
+      // Extract refer server from IANA response, or use IANA response directly
+      const referMatch = ianaRaw.match(/^refer:\s*(.+)$/im)
+      const authServer = referMatch?.[1]?.trim()
+      const raw = authServer
+        ? (await tcpWhois(apex, authServer, 8000)) ?? ianaRaw
+        : ianaRaw
 
       const domainAgeYears = extractDomainAge(raw)
       const domainRegistrar = extractRegistrar(raw)
@@ -32,7 +35,7 @@ export class WhoisProvider implements CompanyDataProvider {
 
       return {
         source: this.name,
-        confidence: 0.3, // supplementary data only
+        confidence: 0.3,
         data: { domainAgeYears, domainRegistrar },
         fetchedAt: new Date().toISOString(),
       }
@@ -45,28 +48,32 @@ export class WhoisProvider implements CompanyDataProvider {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function apexDomain(domain: string): string {
-  // Strip www. and any path
-  return domain.replace(/^www\./, '').split('/')[0]
+  return domain.replace(/^www\./, '').split('/')[0].split('?')[0]
 }
 
-function lookupWithTimeout(domain: string, timeoutMs: number): Promise<string | null> {
+function tcpWhois(domain: string, server: string, timeoutMs: number): Promise<string | null> {
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(null), timeoutMs)
-    whoisLookup.lookup(domain, { timeout: timeoutMs - 500 }, (err, data) => {
-      clearTimeout(timer)
-      if (err || !data) return resolve(null)
-      resolve(data)
+    let data = ''
+    const timer = setTimeout(() => { socket.destroy(); resolve(null) }, timeoutMs)
+
+    const socket = net.createConnection({ host: server, port: 43 }, () => {
+      socket.write(domain + '\r\n')
     })
+
+    socket.setEncoding('utf8')
+    socket.on('data', (chunk) => { data += chunk })
+    socket.on('end', () => { clearTimeout(timer); resolve(data || null) })
+    socket.on('error', () => { clearTimeout(timer); resolve(null) })
   })
 }
 
 function extractDomainAge(raw: string): number | null {
-  // "Creation Date: 1997-06-12" or "created: 2001-10-17"
-  const match = raw.match(/(?:creation date|created|registered on)[:\s]+(\d{4})/i)
+  const match = raw.match(/(?:creation date|created|registered on|domain registered)[:\s]+(\d{4})/i)
   if (!match) return null
   const year = parseInt(match[1], 10)
-  if (year < 1990 || year > new Date().getFullYear()) return null
-  return new Date().getFullYear() - year
+  const thisYear = new Date().getFullYear()
+  if (year < 1990 || year > thisYear) return null
+  return thisYear - year
 }
 
 function extractRegistrar(raw: string): string | null {
